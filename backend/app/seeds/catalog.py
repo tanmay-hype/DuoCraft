@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models import Addon, Product
 
-
 PRODUCTS = [
     {
         "slug": "proposal",
@@ -86,8 +85,7 @@ PRODUCTS = [
         "name": "Piece by Piece",
         "category": "memories",
         "description": (
-            "Hide a favorite memory inside an interactive photo "
-            "puzzle they get to reveal."
+            "Hide a favorite memory inside an interactive photo puzzle they get to reveal."
         ),
         "base_price": 39900,
         "sale_price": 29900,
@@ -101,8 +99,7 @@ PRODUCTS = [
         "name": "Little Book of Us",
         "category": "memories",
         "description": (
-            "Gather the photos, tiny stories, and ordinary moments "
-            "that somehow became everything."
+            "Gather the photos, tiny stories, and ordinary moments that somehow became everything."
         ),
         "base_price": 49900,
         "sale_price": 34900,
@@ -116,8 +113,7 @@ PRODUCTS = [
         "name": "A Little Thank You",
         "category": "gratitude",
         "description": (
-            "Make gratitude feel personal with a warm note designed "
-            "to linger after it is opened."
+            "Make gratitude feel personal with a warm note designed to linger after it is opened."
         ),
         "base_price": 24900,
         "sale_price": 14900,
@@ -131,8 +127,7 @@ PRODUCTS = [
         "name": "Glad It's You",
         "category": "friendship",
         "description": (
-            "A small celebration of inside jokes, shared chaos, "
-            "and the friend who always gets it."
+            "A small celebration of inside jokes, shared chaos, and the friend who always gets it."
         ),
         "base_price": 29900,
         "sale_price": 19900,
@@ -163,22 +158,19 @@ ADDONS = [
     {
         "slug": "extra-photos",
         "name": "Extra Photos",
-        "description": (
-            "Add room for more favorite photos and shared memories."
-        ),
+        "description": ("Add room for more favorite photos and shared memories."),
         "price": 4900,
         "display_order": 1,
     },
     {
         "slug": "premium-theme",
         "name": "Premium Theme",
-        "description": (
-            "Unlock an additional premium visual theme for the gift."
-        ),
+        "description": ("Unlock an additional premium visual theme for the gift."),
         "price": 7900,
         "display_order": 2,
     },
 ]
+
 
 def seed_products(db: Session) -> None:
     for data in PRODUCTS:

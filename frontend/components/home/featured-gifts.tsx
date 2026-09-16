@@ -1,66 +1,26 @@
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-
 import { ProductGrid } from "@/components/catalog/product-grid";
-import { featuredProducts } from "@/data/products";
+import type { Product } from "@/types/product";
 
-export function FeaturedGifts() {
+type FeaturedGiftsProps = {
+  products: Product[];
+};
+
+export function FeaturedGifts({
+  products,
+}: FeaturedGiftsProps) {
   return (
-    <section className="py-20 sm:py-28">
-      <div className="page-shell">
-        <div className="mb-12 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="script text-2xl text-rose">
-              a place to start
-            </p>
+    <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+      <div className="mb-10 max-w-2xl">
+        <p className="mb-3 font-script text-2xl text-berry">
+          A few favorites
+        </p>
 
-            <h2
-              className="
-                serif
-                mt-2
-                max-w-2xl
-                text-4xl
-                font-semibold
-                leading-[1.02]
-                tracking-[-0.045em]
-                sm:text-5xl
-              "
-            >
-              Gifts for the moments
-              <span className="text-berry">
-                {" "}you&apos;ll remember.
-              </span>
-            </h2>
-          </div>
-
-          <Link
-            href="/catalog"
-            className="
-              group
-              inline-flex
-              w-fit
-              items-center
-              gap-2
-              text-sm
-              font-semibold
-              text-berry
-            "
-          >
-            Browse all gifts
-
-            <ArrowRight
-              className="
-                size-4
-                transition-transform
-                duration-300
-                group-hover:translate-x-1
-              "
-            />
-          </Link>
-        </div>
-
-        <ProductGrid products={featuredProducts} />
+        <h2 className="font-serif text-3xl text-ink sm:text-4xl">
+          Made for moments worth keeping.
+        </h2>
       </div>
+
+      <ProductGrid products={products} />
     </section>
   );
 }

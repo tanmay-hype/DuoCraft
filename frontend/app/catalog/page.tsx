@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CatalogBrowser } from "@/components/catalog/catalog-browser";
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
-import { products } from "@/data/products";
+import { getProducts } from "@/lib/api/catalog";
 
 export const metadata: Metadata = {
   title: "Digital Gifts",
@@ -11,7 +11,9 @@ export const metadata: Metadata = {
     "Browse personalized digital gifts for birthdays, anniversaries, friendships, love, gratitude, and more.",
 };
 
-export default function CatalogPage() {
+export default async function CatalogPage() {
+  const products = await getProducts();
+
   return (
     <>
       <Navbar />

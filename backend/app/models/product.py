@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -8,6 +16,21 @@ from app.models.base import Base
 
 class Product(Base):
     __tablename__ = "products"
+
+    __table_args__ = (
+        CheckConstraint(
+            "base_price >= 0",
+            name="ck_products_base_price_non_negative",
+        ),
+        CheckConstraint(
+            "sale_price >= 0",
+            name="ck_products_sale_price_non_negative",
+        ),
+        CheckConstraint(
+            "sale_price <= base_price",
+            name="ck_products_sale_price_lte_base_price",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         Integer,

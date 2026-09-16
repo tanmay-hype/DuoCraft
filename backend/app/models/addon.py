@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -8,6 +8,13 @@ from app.models.base import Base
 
 class Addon(Base):
     __tablename__ = "addons"
+
+    __table_args__ = (
+        CheckConstraint(
+            "price >= 0",
+            name="ck_addons_price_non_negative",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         Integer,

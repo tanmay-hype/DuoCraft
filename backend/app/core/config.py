@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://redis:6379/0"
 
+    admin_api_key: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

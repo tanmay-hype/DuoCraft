@@ -10,8 +10,7 @@ PRODUCTS = [
         "name": "The Big Question",
         "category": "romance",
         "description": (
-            "Turn one unforgettable question into a playful "
-            "little moment made just for them."
+            "Turn one unforgettable question into a playful little moment made just for them."
         ),
         "base_price": 39900,
         "sale_price": 29900,

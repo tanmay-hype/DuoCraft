@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { updateAdminProduct } from "@/lib/api/admin-catalog";
+import {
+  updateAdminAddon,
+  updateAdminProduct } from "@/lib/api/admin-catalog";
 
 export type ProductActionState = {
   success: boolean;
@@ -114,6 +116,94 @@ export async function updateProductAction(
         error instanceof Error
           ? error.message
           : "Unable to update product.",
+    };
+  }
+}
+
+export type AddonActionState = {
+  success: boolean;
+  message: string;
+};
+
+export async function updateAddonAction(
+  _previousState: AddonActionState,
+  formData: FormData,
+): Promise<AddonActionState> {
+  const addonId = Number(formData.get("addonId"));
+  const priceRupees = Number(formData.get("price"));
+  const displayOrder = Number(
+    formData.get("displayOrder"),
+  );
+
+  if (!Number.isInteger(addonId) || addonId <= 0) {
+    return {
+      success: false,
+      message: "Invalid add-on.",
+    };
+  }
+
+  if (
+    !Number.isFinite(priceRupees) ||
+    priceRupees < 0
+  ) {
+    return {
+      success: false,
+      message: "Price must be a valid non-negative number.",
+    };
+  }
+
+  if (
+    !Number.isInteger(displayOrder) ||
+    displayOrder < 0
+  ) {
+    return {
+      success: false,
+      message: "Display order must be a non-negative integer.",
+    };
+  }
+
+  const name = String(
+    formData.get("name") ?? "",
+  ).trim();
+
+  const description = String(
+    formData.get("description") ?? "",
+  ).trim();
+
+  if (!name || !description) {
+    return {
+      success: false,
+      message: "Name and description are required.",
+    };
+  }
+
+  try {
+    await updateAdminAddon(addonId, {
+      name,
+      description,
+
+      // UI uses rupees; API/database use paise.
+      price: Math.round(priceRupees * 100),
+
+      is_active:
+        formData.get("isActive") === "on",
+
+      display_order: displayOrder,
+    });
+
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      message: "Add-on saved.",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unable to update add-on.",
     };
   }
 }

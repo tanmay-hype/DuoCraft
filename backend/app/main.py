@@ -5,6 +5,7 @@ from app.api.routes.admin_catalog import (
     router as admin_catalog_router,
 )
 from app.api.routes.catalog import router as catalog_router
+from app.api.routes.drafts import router as drafts_router
 from app.api.routes.health import router as health_router
 from app.core.config import settings
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     application.include_router(health_router)
     application.include_router(catalog_router)
     application.include_router(admin_catalog_router)
+    application.include_router(drafts_router)
     return application
 
 

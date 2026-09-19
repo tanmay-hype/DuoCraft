@@ -23,6 +23,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    draft_lifetime_days: int = 7
+    draft_cookie_name: str = "duocraft_draft_owner"
+    draft_cookie_secure: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

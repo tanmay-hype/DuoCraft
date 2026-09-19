@@ -15,3 +15,23 @@ export type AdminProductUpdate = {
   is_active?: boolean;
   display_order?: number;
 };
+
+export type AdminAddon = {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  price: number;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminAddonUpdate = {
+  name?: string;
+  description?: string;
+  price?: number;
+  is_active?: boolean;
+  display_order?: number;
+};

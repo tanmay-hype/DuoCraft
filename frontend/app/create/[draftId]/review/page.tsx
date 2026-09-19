@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   Check,
+  Flower2,
   LockKeyhole,
   Sparkles,
 } from "lucide-react";
@@ -14,11 +15,16 @@ import { getDraft } from "@/lib/api/drafts";
 import type {
   BirthdayPersonalization,
   Draft,
+  ThankYouPersonalization,
 } from "@/types/draft";
 
-function getBirthdayPersonalization(
+type ReviewPersonalization =
+  | BirthdayPersonalization
+  | ThankYouPersonalization;
+
+function getPersonalization(
   draft: Draft,
-): BirthdayPersonalization {
+): ReviewPersonalization {
   const stored = draft.personalization;
 
   return {
@@ -39,6 +45,17 @@ function getBirthdayPersonalization(
         ? stored.message
         : "",
   };
+}
+
+function isComplete(
+  personalization: ReviewPersonalization,
+): boolean {
+  return (
+    personalization.recipient_name.trim().length > 0 &&
+    personalization.sender_name.trim().length > 0 &&
+    personalization.headline.trim().length > 0 &&
+    personalization.message.trim().length > 0
+  );
 }
 
 export default function ReviewGiftPage() {
@@ -98,12 +115,17 @@ export default function ReviewGiftPage() {
       <main className="min-h-screen bg-cream">
         <div className="page-shell py-24">
           <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
-            <h1 className="serif text-4xl font-semibold text-ink">
+            <p className="script text-3xl text-rose">
+              something went missing
+            </p>
+
+            <h1 className="serif mt-3 text-4xl font-semibold text-ink">
               We couldn&apos;t open this gift.
             </h1>
 
-            <p className="mt-4 text-ink-soft">
-              {error || "This draft is no longer available."}
+            <p className="mt-4 leading-7 text-ink-soft">
+              {error ||
+                "This draft may have expired or belongs to another browser."}
             </p>
           </div>
         </div>
@@ -111,26 +133,44 @@ export default function ReviewGiftPage() {
     );
   }
 
-  if (draft.template_key !== "birthday") {
+  const supportedTemplate =
+    draft.template_key === "birthday" ||
+    draft.template_key === "thank_you";
+
+  if (!supportedTemplate) {
     return (
       <main className="min-h-screen bg-cream">
-        <div className="page-shell py-24 text-center">
-          <h1 className="serif text-4xl font-semibold text-ink">
-            Review is not available for this gift yet.
-          </h1>
+        <div className="page-shell py-24">
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
+            <p className="script text-3xl text-rose">
+              almost ready
+            </p>
+
+            <h1 className="serif mt-3 text-4xl font-semibold text-ink">
+              Review is not available for this gift yet.
+            </h1>
+
+            <p className="mt-4 leading-7 text-ink-soft">
+              Birthday and Thank You review are available
+              first while the remaining templates are being
+              added.
+            </p>
+
+            <Link
+              href={`/create/${draft.id}`}
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-berry px-6 py-3 text-sm font-bold text-paper transition hover:-translate-y-0.5"
+            >
+              <ArrowLeft className="size-4" />
+              Back to editor
+            </Link>
+          </div>
         </div>
       </main>
     );
   }
 
-  const personalization =
-    getBirthdayPersonalization(draft);
-
-  const complete =
-    personalization.recipient_name.trim() !== "" &&
-    personalization.sender_name.trim() !== "" &&
-    personalization.headline.trim() !== "" &&
-    personalization.message.trim() !== "";
+  const personalization = getPersonalization(draft);
+  const complete = isComplete(personalization);
 
   if (!complete) {
     return (
@@ -146,7 +186,7 @@ export default function ReviewGiftPage() {
             </h1>
 
             <p className="mt-4 leading-7 text-ink-soft">
-              Finish all the Birthday fields before reviewing
+              Finish all the required fields before reviewing
               your gift.
             </p>
 
@@ -162,6 +202,13 @@ export default function ReviewGiftPage() {
       </main>
     );
   }
+
+  const isBirthday =
+    draft.template_key === "birthday";
+
+  const giftName = isBirthday
+    ? "Birthday Gift"
+    : "Thank You Gift";
 
   return (
     <main className="min-h-screen bg-cream">
@@ -188,7 +235,9 @@ export default function ReviewGiftPage() {
             </p>
 
             <h1 className="serif mt-3 text-5xl font-semibold tracking-[-0.05em] text-ink sm:text-6xl">
-              Ready to make their day?
+              {isBirthday
+                ? "Ready to make their day?"
+                : "Ready to send some gratitude?"}
             </h1>
 
             <p className="mx-auto mt-5 max-w-xl leading-7 text-ink-soft">
@@ -198,44 +247,15 @@ export default function ReviewGiftPage() {
           </div>
 
           <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-            <section className="relative overflow-hidden rounded-[2.5rem_1.6rem_2.8rem_1.8rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
-              <Sparkles
-                className="absolute right-8 top-8 size-6 text-rose opacity-60"
-                strokeWidth={1.5}
+            {isBirthday ? (
+              <BirthdayReviewPreview
+                personalization={personalization}
               />
-
-              <p className="script text-3xl text-rose">
-                a little birthday magic
-              </p>
-
-              <div className="py-16 text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
-                  especially for
-                </p>
-
-                <h2 className="serif mt-4 text-5xl font-semibold tracking-[-0.05em] text-ink">
-                  {personalization.recipient_name}
-                </h2>
-
-                <h3 className="serif mx-auto mt-8 max-w-lg text-3xl leading-tight text-ink">
-                  {personalization.headline}
-                </h3>
-
-                <p className="mx-auto mt-7 max-w-lg whitespace-pre-wrap leading-8 text-ink-soft">
-                  {personalization.message}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <p className="text-sm text-ink-muted">
-                  with love,
-                </p>
-
-                <p className="script mt-1 text-3xl text-ink">
-                  {personalization.sender_name}
-                </p>
-              </div>
-            </section>
+            ) : (
+              <ThankYouReviewPreview
+                personalization={personalization}
+              />
+            )}
 
             <aside className="rounded-[2rem] border border-line bg-paper p-7 shadow-[var(--shadow-paper)]">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose">
@@ -243,7 +263,7 @@ export default function ReviewGiftPage() {
               </p>
 
               <h2 className="serif mt-3 text-3xl font-semibold text-ink">
-                Birthday Gift
+                {giftName}
               </h2>
 
               <div className="mt-7 grid gap-4 border-y border-line py-6">
@@ -259,7 +279,10 @@ export default function ReviewGiftPage() {
 
                 <ReviewItem
                   label="Theme"
-                  value={formatTheme(draft.theme_key)}
+                  value={formatTheme(
+                    draft.template_key,
+                    draft.theme_key,
+                  )}
                 />
               </div>
 
@@ -294,6 +317,108 @@ export default function ReviewGiftPage() {
   );
 }
 
+function BirthdayReviewPreview({
+  personalization,
+}: {
+  personalization: ReviewPersonalization;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-[2.5rem_1.6rem_2.8rem_1.8rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
+      <Sparkles
+        className="absolute right-8 top-8 size-6 text-rose opacity-60"
+        strokeWidth={1.5}
+        aria-hidden="true"
+      />
+
+      <p className="script text-3xl text-rose">
+        a little birthday magic
+      </p>
+
+      <div className="py-16 text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+          especially for
+        </p>
+
+        <h2 className="serif mt-4 text-5xl font-semibold tracking-[-0.05em] text-ink">
+          {personalization.recipient_name}
+        </h2>
+
+        <h3 className="serif mx-auto mt-8 max-w-lg text-3xl leading-tight text-ink">
+          {personalization.headline}
+        </h3>
+
+        <p className="mx-auto mt-7 max-w-lg whitespace-pre-wrap leading-8 text-ink-soft">
+          {personalization.message}
+        </p>
+      </div>
+
+      <div className="text-right">
+        <p className="text-sm text-ink-muted">
+          with love,
+        </p>
+
+        <p className="script mt-1 text-3xl text-ink">
+          {personalization.sender_name}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function ThankYouReviewPreview({
+  personalization,
+}: {
+  personalization: ReviewPersonalization;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-[1.8rem_2.7rem_1.7rem_2.4rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
+      <Flower2
+        className="absolute right-8 top-8 size-16 text-rose opacity-30"
+        strokeWidth={1.2}
+        aria-hidden="true"
+      />
+
+      <Flower2
+        className="absolute -bottom-3 -left-3 size-24 rotate-12 text-rose opacity-20"
+        strokeWidth={1.2}
+        aria-hidden="true"
+      />
+
+      <p className="script text-3xl text-rose">
+        with a grateful heart
+      </p>
+
+      <div className="py-16">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+          dear
+        </p>
+
+        <h2 className="serif mt-3 text-5xl font-semibold tracking-[-0.05em] text-ink">
+          {personalization.recipient_name}
+        </h2>
+
+        <h3 className="serif mt-9 max-w-lg text-3xl leading-tight text-ink">
+          {personalization.headline}
+        </h3>
+
+        <p className="mt-7 max-w-lg whitespace-pre-wrap leading-8 text-ink-soft">
+          {personalization.message}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-ink-muted">
+          gratefully,
+        </p>
+
+        <p className="script mt-1 text-3xl text-ink">
+          {personalization.sender_name}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function ReviewItem({
   label,
   value,
@@ -315,14 +440,34 @@ function ReviewItem({
 }
 
 function formatTheme(
+  templateKey: string,
   theme: string | null,
 ): string {
-  switch (theme) {
-    case "rose-celebration":
-      return "Rose Celebration";
-    case "midnight-gold":
-      return "Midnight Gold";
-    default:
-      return "Warm Confetti";
+  if (templateKey === "birthday") {
+    switch (theme) {
+      case "rose-celebration":
+        return "Rose Celebration";
+
+      case "midnight-gold":
+        return "Midnight Gold";
+
+      default:
+        return "Warm Confetti";
+    }
   }
+
+  if (templateKey === "thank_you") {
+    switch (theme) {
+      case "warm-paper":
+        return "Warm Paper";
+
+      case "garden-note":
+        return "Garden Note";
+
+      default:
+        return "Pressed Flowers";
+    }
+  }
+
+  return "Default";
 }

@@ -3,7 +3,19 @@ export type BirthdayTheme =
   | "rose-celebration"
   | "midnight-gold";
 
+export type ThankYouTheme =
+  | "pressed-flowers"
+  | "warm-paper"
+  | "garden-note";
+
 export type BirthdayPersonalization = {
+  recipient_name: string;
+  sender_name: string;
+  headline: string;
+  message: string;
+};
+
+export type ThankYouPersonalization = {
   recipient_name: string;
   sender_name: string;
   headline: string;

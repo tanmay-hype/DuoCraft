@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BirthdayBuilder } from "@/components/gifts/birthday/birthday-builder";
+import { ThankYouBuilder } from "@/components/gifts/thank-you/thank-you-builder";
 import { getDraft } from "@/lib/api/drafts";
 import type { Draft } from "@/types/draft";
 
@@ -82,24 +83,21 @@ export default function CreateGiftPage() {
     );
   }
 
-  if (draft.template_key !== "birthday") {
+  if (draft.template_key === "birthday") {
     return (
       <main className="min-h-screen bg-cream">
-        <div className="page-shell py-24">
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
-            <p className="script text-3xl text-rose">
-              almost ready
-            </p>
+        <div className="page-shell py-10 sm:py-14">
+          <BirthdayBuilder draft={draft} />
+        </div>
+      </main>
+    );
+  }
 
-            <h1 className="serif mt-3 text-4xl font-semibold text-ink">
-              This gift editor is coming next.
-            </h1>
-
-            <p className="mt-4 leading-7 text-ink-soft">
-              The Birthday editor is available first while
-              the remaining DuoCraft templates are being added.
-            </p>
-          </div>
+  if (draft.template_key === "thank_you") {
+    return (
+      <main className="min-h-screen bg-cream">
+        <div className="page-shell py-10 sm:py-14">
+          <ThankYouBuilder draft={draft} />
         </div>
       </main>
     );
@@ -107,8 +105,21 @@ export default function CreateGiftPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <div className="page-shell py-10 sm:py-14">
-        <BirthdayBuilder draft={draft} />
+      <div className="page-shell py-24">
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
+          <p className="script text-3xl text-rose">
+            almost ready
+          </p>
+
+          <h1 className="serif mt-3 text-4xl font-semibold text-ink">
+            This gift editor is coming next.
+          </h1>
+
+          <p className="mt-4 leading-7 text-ink-soft">
+            Birthday and Thank You are available now. The
+            remaining DuoCraft templates are being added.
+          </p>
+        </div>
       </div>
     </main>
   );

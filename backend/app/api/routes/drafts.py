@@ -1,10 +1,6 @@
 from typing import Annotated
 from uuid import UUID
 
-from app.services.personalization import (
-    PersonalizationValidationError,
-)
-
 from fastapi import (
     APIRouter,
     Cookie,
@@ -27,6 +23,9 @@ from app.schemas import (
     DraftUpdate,
 )
 from app.services.draft import DraftService
+from app.services.personalization import (
+    PersonalizationValidationError,
+)
 
 router = APIRouter(
     prefix="/drafts",

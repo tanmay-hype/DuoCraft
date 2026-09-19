@@ -2,8 +2,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.schemas.personalization import BirthdayPersonalization
-
+from app.schemas.personalization import (
+    BirthdayPersonalization,
+    ThankYouPersonalization,
+)
 
 BIRTHDAY_THEMES = {
     "warm-confetti",
@@ -11,7 +13,14 @@ BIRTHDAY_THEMES = {
     "midnight-gold",
 }
 
+THANK_YOU_THEMES = {
+    "pressed-flowers",
+    "warm-paper",
+    "garden-note",
+}
+
 DEFAULT_BIRTHDAY_THEME = "warm-confetti"
+DEFAULT_THANK_YOU_THEME = "pressed-flowers"
 
 
 class PersonalizationValidationError(ValueError):
@@ -28,6 +37,13 @@ def validate_personalization(
                 personalization,
             )
             return validated.model_dump()
+
+        if template_key == "thank_you":
+            validated = ThankYouPersonalization.model_validate(
+                personalization,
+            )
+            return validated.model_dump()
+
     except ValidationError as exc:
         raise PersonalizationValidationError(
             "Invalid personalization data.",
@@ -49,6 +65,17 @@ def validate_theme(
         if theme_key not in BIRTHDAY_THEMES:
             raise PersonalizationValidationError(
                 "Invalid birthday theme.",
+            )
+
+        return theme_key
+
+    if template_key == "thank_you":
+        if theme_key is None:
+            return DEFAULT_THANK_YOU_THEME
+
+        if theme_key not in THANK_YOU_THEMES:
+            raise PersonalizationValidationError(
+                "Invalid thank-you theme.",
             )
 
         return theme_key

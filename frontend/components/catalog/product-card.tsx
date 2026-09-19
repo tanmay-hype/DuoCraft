@@ -14,6 +14,7 @@ import Link from "next/link";
 
 import { PriceTag } from "@/components/catalog/price-tag";
 import { ProductBadge } from "@/components/catalog/product-badge";
+import { PersonalizeButton } from "@/components/gifts/personalize-button";
 import type { Product } from "@/types/product";
 
 interface ProductCardProps {
@@ -81,12 +82,11 @@ export function ProductCard({
       }}
       className={rotation}
     >
-      <Link
-        href={`/catalog/${product.slug}`}
+      <div
         className="
           group
           relative
-          flex min-h-[360px]
+          flex min-h-[390px]
           flex-col
           overflow-hidden
           rounded-[1.8rem_1.2rem_2rem_1.4rem]
@@ -147,9 +147,9 @@ export function ProductCard({
             />
           </div>
 
-          {product.badge && (
+          {product.badge ? (
             <ProductBadge label={product.badge} />
-          )}
+          ) : null}
         </div>
 
         <div className="relative mt-12 flex flex-1 flex-col">
@@ -157,48 +157,63 @@ export function ProductCard({
             {product.category}
           </p>
 
-          <h2 className="serif text-3xl font-semibold leading-[1.05] tracking-[-0.035em] text-ink">
-            {product.name}
-          </h2>
+          <Link
+            href={`/catalog/${product.slug}`}
+            className="group/title"
+          >
+            <h2 className="serif text-3xl font-semibold leading-[1.05] tracking-[-0.035em] text-ink transition group-hover/title:text-berry">
+              {product.name}
+            </h2>
+          </Link>
 
           <p className="mt-4 max-w-sm text-sm leading-7 text-ink-soft">
             {product.description}
           </p>
 
-          <div className="mt-auto flex items-end justify-between gap-4 pt-8">
+          <div className="mt-auto pt-8">
             <PriceTag
               basePrice={product.basePrice}
               salePrice={product.salePrice}
             />
 
-            <span
-              className="
-                grid size-10
-                place-items-center
-                rounded-full
-                border border-line
-                text-berry
-                transition
-                duration-300
-                group-hover:border-berry
-                group-hover:bg-berry
-                group-hover:text-paper
-              "
-            >
-              <ArrowUpRight
-                className="
-                  size-4
-                  transition-transform
-                  duration-300
-                  group-hover:translate-x-0.5
-                  group-hover:-translate-y-0.5
-                "
-                aria-hidden="true"
+            <div className="mt-6 flex items-center gap-3">
+              <PersonalizeButton
+                productId={product.id}
+                className="flex-1"
               />
-            </span>
+
+              <Link
+                href={`/catalog/${product.slug}`}
+                aria-label={`View details for ${product.name}`}
+                className="
+                  grid size-11
+                  shrink-0
+                  place-items-center
+                  rounded-full
+                  border border-line
+                  text-berry
+                  transition
+                  duration-300
+                  hover:border-berry
+                  hover:bg-berry
+                  hover:text-paper
+                "
+              >
+                <ArrowUpRight
+                  className="
+                    size-4
+                    transition-transform
+                    duration-300
+                    group-hover:translate-x-0.5
+                    group-hover:-translate-y-0.5
+                  "
+                  aria-hidden="true"
+                />
+              </Link>
+            </div>
           </div>
         </div>
-      </Link>
+      </div>
     </motion.article>
   );
 }

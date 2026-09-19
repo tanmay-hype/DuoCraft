@@ -1,0 +1,58 @@
+from typing import Any
+
+from pydantic import ValidationError
+
+from app.schemas.personalization import BirthdayPersonalization
+
+
+BIRTHDAY_THEMES = {
+    "warm-confetti",
+    "rose-celebration",
+    "midnight-gold",
+}
+
+DEFAULT_BIRTHDAY_THEME = "warm-confetti"
+
+
+class PersonalizationValidationError(ValueError):
+    pass
+
+
+def validate_personalization(
+    template_key: str,
+    personalization: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        if template_key == "birthday":
+            validated = BirthdayPersonalization.model_validate(
+                personalization,
+            )
+            return validated.model_dump()
+    except ValidationError as exc:
+        raise PersonalizationValidationError(
+            "Invalid personalization data.",
+        ) from exc
+
+    raise PersonalizationValidationError(
+        f"Unsupported template: {template_key}.",
+    )
+
+
+def validate_theme(
+    template_key: str,
+    theme_key: str | None,
+) -> str | None:
+    if template_key == "birthday":
+        if theme_key is None:
+            return DEFAULT_BIRTHDAY_THEME
+
+        if theme_key not in BIRTHDAY_THEMES:
+            raise PersonalizationValidationError(
+                "Invalid birthday theme.",
+            )
+
+        return theme_key
+
+    raise PersonalizationValidationError(
+        f"Unsupported template: {template_key}.",
+    )

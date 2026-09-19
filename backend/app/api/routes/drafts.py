@@ -1,6 +1,10 @@
 from typing import Annotated
 from uuid import UUID
 
+from app.services.personalization import (
+    PersonalizationValidationError,
+)
+
 from fastapi import (
     APIRouter,
     Cookie,
@@ -143,7 +147,13 @@ def update_draft(
         service=service,
     )
 
-    return service.update_draft(
-        draft=draft,
-        data=data,
-    )
+    try:
+        return service.update_draft(
+            draft=draft,
+            data=data,
+        )
+    except PersonalizationValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc

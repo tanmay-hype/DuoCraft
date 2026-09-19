@@ -7,6 +7,10 @@ from app.core.config import settings
 from app.core.draft_security import hash_owner_token
 from app.models import Draft, Product
 from app.schemas import DraftUpdate
+from app.services.personalization import (
+    validate_personalization,
+    validate_theme,
+)
 
 
 class DraftService:
@@ -69,6 +73,21 @@ class DraftService:
         data: DraftUpdate,
     ) -> Draft:
         updates = data.model_dump(exclude_unset=True)
+
+        if "personalization" in updates:
+            personalization = updates["personalization"]
+
+            if personalization is not None:
+                updates["personalization"] = validate_personalization(
+                    draft.template_key,
+                    personalization,
+                )
+
+        if "theme_key" in updates:
+            updates["theme_key"] = validate_theme(
+                draft.template_key,
+                updates["theme_key"],
+            )
 
         for field, value in updates.items():
             setattr(draft, field, value)

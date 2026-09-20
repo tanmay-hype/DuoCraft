@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     draft_cookie_name: str = "duocraft_draft_owner"
     draft_cookie_secure: bool = False
 
+    s3_bucket_name: str = "duocraft-dev"
+    s3_region: str = "ap-south-1"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_endpoint_url: str | None = None
+
+    photo_upload_max_bytes: int = 10 * 1024 * 1024
+    photo_upload_url_expiry_seconds: int = 900
+
 
 @lru_cache
 def get_settings() -> Settings:

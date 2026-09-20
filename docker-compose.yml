@@ -110,6 +110,7 @@ services:
     environment:
       MINIO_ROOT_USER: duocraft
       MINIO_ROOT_PASSWORD: duocraft-local-secret
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000
 
     ports:
       - "9000:9000"

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from urllib.parse import urlsplit, urlunsplit
 
 import boto3
 from botocore.client import BaseClient
@@ -21,6 +20,23 @@ class StoredObjectMetadata:
 
 class StorageService:
     def __init__(self) -> None:
+        self.bucket_name = settings.s3_bucket_name
+
+        self.client = self._create_client(
+            endpoint_url=settings.s3_endpoint_url,
+        )
+
+        presign_endpoint = settings.s3_public_endpoint_url or settings.s3_endpoint_url
+
+        self.presign_client = self._create_client(
+            endpoint_url=presign_endpoint,
+        )
+
+    @staticmethod
+    def _create_client(
+        *,
+        endpoint_url: str | None,
+    ) -> BaseClient:
         client_kwargs: dict[str, object] = {
             "service_name": "s3",
             "region_name": settings.s3_region,
@@ -36,15 +52,12 @@ class StorageService:
             client_kwargs["aws_access_key_id"] = settings.s3_access_key_id
 
         if settings.s3_secret_access_key:
-            client_kwargs["aws_secret_access_key"] = (
-                settings.s3_secret_access_key
-            )
+            client_kwargs["aws_secret_access_key"] = settings.s3_secret_access_key
 
-        if settings.s3_endpoint_url:
-            client_kwargs["endpoint_url"] = settings.s3_endpoint_url
+        if endpoint_url:
+            client_kwargs["endpoint_url"] = endpoint_url
 
-        self.client: BaseClient = boto3.client(**client_kwargs)
-        self.bucket_name = settings.s3_bucket_name
+        return boto3.client(**client_kwargs)
 
     def create_upload_url(
         self,
@@ -53,22 +66,18 @@ class StorageService:
         content_type: str,
     ) -> str:
         try:
-            upload_url = self.client.generate_presigned_url(
+            return self.presign_client.generate_presigned_url(
                 ClientMethod="put_object",
                 Params={
                     "Bucket": self.bucket_name,
                     "Key": storage_key,
                     "ContentType": content_type,
                 },
-                ExpiresIn=settings.photo_upload_url_expiry_seconds,
+                ExpiresIn=(settings.photo_upload_url_expiry_seconds),
                 HttpMethod="PUT",
             )
         except (BotoCoreError, ClientError) as exc:
-            raise StorageError(
-                "Unable to create upload URL."
-            ) from exc
-
-        return self._replace_endpoint_for_browser(upload_url)
+            raise StorageError("Unable to create upload URL.") from exc
 
     def get_object_metadata(
         self,
@@ -81,31 +90,9 @@ class StorageService:
                 Key=storage_key,
             )
         except (BotoCoreError, ClientError) as exc:
-            raise StorageError(
-                "Unable to verify uploaded object."
-            ) from exc
+            raise StorageError("Unable to verify uploaded object.") from exc
 
         return StoredObjectMetadata(
             size_bytes=response["ContentLength"],
             content_type=response.get("ContentType"),
-        )
-
-    @staticmethod
-    def _replace_endpoint_for_browser(url: str) -> str:
-        public_endpoint = settings.s3_public_endpoint_url
-
-        if not public_endpoint:
-            return url
-
-        original = urlsplit(url)
-        public = urlsplit(public_endpoint)
-
-        return urlunsplit(
-            (
-                public.scheme,
-                public.netloc,
-                original.path,
-                original.query,
-                original.fragment,
-            )
         )

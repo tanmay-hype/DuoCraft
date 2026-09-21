@@ -4,7 +4,9 @@ import {
   ArrowLeft,
   Check,
   Flower2,
+  ImageIcon,
   LockKeyhole,
+  Puzzle,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -12,19 +14,21 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getDraft } from "@/lib/api/drafts";
+import { getDraftPhotos, type PhotoAsset } from "@/lib/api/photos";
 import type {
   BirthdayPersonalization,
   Draft,
+  PhotoPuzzlePersonalization,
   ThankYouPersonalization,
 } from "@/types/draft";
 
-type ReviewPersonalization =
+type TextReviewPersonalization =
   | BirthdayPersonalization
   | ThankYouPersonalization;
 
-function getPersonalization(
+function getTextPersonalization(
   draft: Draft,
-): ReviewPersonalization {
+): TextReviewPersonalization {
   const stored = draft.personalization;
 
   return {
@@ -47,8 +51,33 @@ function getPersonalization(
   };
 }
 
-function isComplete(
-  personalization: ReviewPersonalization,
+function getPhotoPuzzlePersonalization(
+  draft: Draft,
+): PhotoPuzzlePersonalization {
+  const stored = draft.personalization;
+
+  return {
+    recipient_name:
+      typeof stored.recipient_name === "string"
+        ? stored.recipient_name
+        : "",
+    sender_name:
+      typeof stored.sender_name === "string"
+        ? stored.sender_name
+        : "",
+    message:
+      typeof stored.message === "string"
+        ? stored.message
+        : "",
+    photo_asset_id:
+      typeof stored.photo_asset_id === "string"
+        ? stored.photo_asset_id
+        : null,
+  };
+}
+
+function isTextPersonalizationComplete(
+  personalization: TextReviewPersonalization,
 ): boolean {
   return (
     personalization.recipient_name.trim().length > 0 &&
@@ -58,11 +87,23 @@ function isComplete(
   );
 }
 
+function isPhotoPuzzleComplete(
+  personalization: PhotoPuzzlePersonalization,
+): boolean {
+  return (
+    personalization.recipient_name.trim().length > 0 &&
+    personalization.sender_name.trim().length > 0 &&
+    personalization.message.trim().length > 0 &&
+    personalization.photo_asset_id !== null
+  );
+}
+
 export default function ReviewGiftPage() {
   const params = useParams<{ draftId: string }>();
   const draftId = params.draftId;
 
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [photo, setPhoto] = useState<PhotoAsset | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -73,8 +114,30 @@ export default function ReviewGiftPage() {
       try {
         const loadedDraft = await getDraft(draftId);
 
-        if (active) {
-          setDraft(loadedDraft);
+        if (!active) {
+          return;
+        }
+
+        setDraft(loadedDraft);
+
+        if (loadedDraft.template_key === "photo_puzzle") {
+          const personalization =
+            getPhotoPuzzlePersonalization(loadedDraft);
+
+          const photos = await getDraftPhotos(draftId);
+
+          if (!active) {
+            return;
+          }
+
+          const selectedPhoto =
+            photos.find(
+              (asset) =>
+                asset.id === personalization.photo_asset_id &&
+                asset.status === "uploaded",
+            ) ?? null;
+
+          setPhoto(selectedPhoto);
         }
       } catch (caughtError) {
         if (active) {
@@ -114,20 +177,14 @@ export default function ReviewGiftPage() {
     return (
       <main className="min-h-screen bg-cream">
         <div className="page-shell py-24">
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
-            <p className="script text-3xl text-rose">
-              something went missing
-            </p>
-
-            <h1 className="serif mt-3 text-4xl font-semibold text-ink">
-              We couldn&apos;t open this gift.
-            </h1>
-
-            <p className="mt-4 leading-7 text-ink-soft">
-              {error ||
-                "This draft may have expired or belongs to another browser."}
-            </p>
-          </div>
+          <StatusCard
+            script="something went missing"
+            title="We couldn't open this gift."
+            description={
+              error ||
+              "This draft may have expired or belongs to another browser."
+            }
+          />
         </div>
       </main>
     );
@@ -135,81 +192,129 @@ export default function ReviewGiftPage() {
 
   const supportedTemplate =
     draft.template_key === "birthday" ||
-    draft.template_key === "thank_you";
+    draft.template_key === "thank_you" ||
+    draft.template_key === "photo_puzzle";
 
   if (!supportedTemplate) {
     return (
       <main className="min-h-screen bg-cream">
         <div className="page-shell py-24">
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
-            <p className="script text-3xl text-rose">
-              almost ready
-            </p>
-
-            <h1 className="serif mt-3 text-4xl font-semibold text-ink">
-              Review is not available for this gift yet.
-            </h1>
-
-            <p className="mt-4 leading-7 text-ink-soft">
-              Birthday and Thank You review are available
-              first while the remaining templates are being
-              added.
-            </p>
-
-            <Link
-              href={`/create/${draft.id}`}
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-berry px-6 py-3 text-sm font-bold text-paper transition hover:-translate-y-0.5"
-            >
-              <ArrowLeft className="size-4" />
-              Back to editor
-            </Link>
-          </div>
+          <StatusCard
+            script="almost ready"
+            title="Review is not available for this gift yet."
+            description="Birthday, Thank You, and Photo Puzzle review are available while the remaining templates are being added."
+            draftId={draft.id}
+            actionLabel="Back to editor"
+          />
         </div>
       </main>
     );
   }
 
-  const personalization = getPersonalization(draft);
-  const complete = isComplete(personalization);
+  if (draft.template_key === "photo_puzzle") {
+    const personalization =
+      getPhotoPuzzlePersonalization(draft);
+
+    const complete =
+      isPhotoPuzzleComplete(personalization) &&
+      photo !== null &&
+      photo.status === "uploaded";
+
+    if (!complete) {
+      return (
+        <main className="min-h-screen bg-cream">
+          <div className="page-shell py-24">
+            <StatusCard
+              script="one little thing"
+              title="Your Photo Puzzle isn't complete yet."
+              description="Add the required words and make sure your photo has finished uploading before reviewing your gift."
+              draftId={draft.id}
+              actionLabel="Finish personalizing"
+            />
+          </div>
+        </main>
+      );
+    }
+
+    return (
+      <ReviewLayout
+        draft={draft}
+        giftName="Photo Puzzle"
+        heading="Ready to piece together the surprise?"
+        personalization={personalization}
+      >
+        <PhotoPuzzleReviewPreview
+          personalization={personalization}
+          photo={photo}
+        />
+      </ReviewLayout>
+    );
+  }
+
+  const personalization = getTextPersonalization(draft);
+  const complete =
+    isTextPersonalizationComplete(personalization);
 
   if (!complete) {
     return (
       <main className="min-h-screen bg-cream">
         <div className="page-shell py-24">
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
-            <p className="script text-3xl text-rose">
-              one little thing
-            </p>
-
-            <h1 className="serif mt-3 text-4xl font-semibold text-ink">
-              Your gift needs a few more words.
-            </h1>
-
-            <p className="mt-4 leading-7 text-ink-soft">
-              Finish all the required fields before reviewing
-              your gift.
-            </p>
-
-            <Link
-              href={`/create/${draft.id}`}
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-berry px-6 py-3 text-sm font-bold text-paper transition hover:-translate-y-0.5"
-            >
-              <ArrowLeft className="size-4" />
-              Finish personalizing
-            </Link>
-          </div>
+          <StatusCard
+            script="one little thing"
+            title="Your gift needs a few more words."
+            description="Finish all the required fields before reviewing your gift."
+            draftId={draft.id}
+            actionLabel="Finish personalizing"
+          />
         </div>
       </main>
     );
   }
 
-  const isBirthday =
-    draft.template_key === "birthday";
+  if (draft.template_key === "birthday") {
+    return (
+      <ReviewLayout
+        draft={draft}
+        giftName="Birthday Gift"
+        heading="Ready to make their day?"
+        personalization={personalization}
+      >
+        <BirthdayReviewPreview
+          personalization={personalization}
+        />
+      </ReviewLayout>
+    );
+  }
 
-  const giftName = isBirthday
-    ? "Birthday Gift"
-    : "Thank You Gift";
+  return (
+    <ReviewLayout
+      draft={draft}
+      giftName="Thank You Gift"
+      heading="Ready to send some gratitude?"
+      personalization={personalization}
+    >
+      <ThankYouReviewPreview
+        personalization={personalization}
+      />
+    </ReviewLayout>
+  );
+}
 
+function ReviewLayout({
+  draft,
+  giftName,
+  heading,
+  personalization,
+  children,
+}: {
+  draft: Draft;
+  giftName: string;
+  heading: string;
+  personalization:
+    | TextReviewPersonalization
+    | PhotoPuzzlePersonalization;
+  children: React.ReactNode;
+}) {
   return (
     <main className="min-h-screen bg-cream">
       <div className="page-shell py-10 sm:py-14">
@@ -235,9 +340,7 @@ export default function ReviewGiftPage() {
             </p>
 
             <h1 className="serif mt-3 text-5xl font-semibold tracking-[-0.05em] text-ink sm:text-6xl">
-              {isBirthday
-                ? "Ready to make their day?"
-                : "Ready to send some gratitude?"}
+              {heading}
             </h1>
 
             <p className="mx-auto mt-5 max-w-xl leading-7 text-ink-soft">
@@ -247,15 +350,7 @@ export default function ReviewGiftPage() {
           </div>
 
           <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-            {isBirthday ? (
-              <BirthdayReviewPreview
-                personalization={personalization}
-              />
-            ) : (
-              <ThankYouReviewPreview
-                personalization={personalization}
-              />
-            )}
+            {children}
 
             <aside className="rounded-[2rem] border border-line bg-paper p-7 shadow-[var(--shadow-paper)]">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose">
@@ -320,7 +415,7 @@ export default function ReviewGiftPage() {
 function BirthdayReviewPreview({
   personalization,
 }: {
-  personalization: ReviewPersonalization;
+  personalization: TextReviewPersonalization;
 }) {
   return (
     <section className="relative overflow-hidden rounded-[2.5rem_1.6rem_2.8rem_1.8rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
@@ -368,7 +463,7 @@ function BirthdayReviewPreview({
 function ThankYouReviewPreview({
   personalization,
 }: {
-  personalization: ReviewPersonalization;
+  personalization: TextReviewPersonalization;
 }) {
   return (
     <section className="relative overflow-hidden rounded-[1.8rem_2.7rem_1.7rem_2.4rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
@@ -419,6 +514,111 @@ function ThankYouReviewPreview({
   );
 }
 
+function PhotoPuzzleReviewPreview({
+  personalization,
+  photo,
+}: {
+  personalization: PhotoPuzzlePersonalization;
+  photo: PhotoAsset;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-[2.3rem_1.5rem_2.5rem_1.8rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
+      <Puzzle
+        className="absolute right-8 top-8 size-16 rotate-12 text-rose opacity-25"
+        strokeWidth={1.2}
+        aria-hidden="true"
+      />
+
+      <p className="script text-3xl text-rose">
+        piece by piece
+      </p>
+
+      <div className="py-10">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+          a memory for
+        </p>
+
+        <h2 className="serif mt-3 text-5xl font-semibold tracking-[-0.05em] text-ink">
+          {personalization.recipient_name}
+        </h2>
+
+        <div className="mt-8 flex min-h-56 items-center justify-center rounded-[1.75rem] border border-dashed border-rose/40 bg-cream p-8 text-center">
+          <div>
+            <ImageIcon className="mx-auto size-10 text-rose" />
+
+            <p className="mt-4 font-bold text-ink">
+              Photo ready for the puzzle
+            </p>
+
+            <p className="mt-2 break-all text-xs text-ink-muted">
+              {photo.original_filename}
+            </p>
+
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-xs font-bold text-berry">
+              <Check className="size-3.5" />
+              Upload verified
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-8 whitespace-pre-wrap leading-8 text-ink-soft">
+          {personalization.message}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-ink-muted">
+          made for you by,
+        </p>
+
+        <p className="script mt-1 text-3xl text-ink">
+          {personalization.sender_name}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function StatusCard({
+  script,
+  title,
+  description,
+  draftId,
+  actionLabel,
+}: {
+  script: string;
+  title: string;
+  description: string;
+  draftId?: string;
+  actionLabel?: string;
+}) {
+  return (
+    <div className="mx-auto max-w-xl rounded-[2rem] border border-line bg-paper p-8 text-center shadow-[var(--shadow-paper)]">
+      <p className="script text-3xl text-rose">
+        {script}
+      </p>
+
+      <h1 className="serif mt-3 text-4xl font-semibold text-ink">
+        {title}
+      </h1>
+
+      <p className="mt-4 leading-7 text-ink-soft">
+        {description}
+      </p>
+
+      {draftId && actionLabel ? (
+        <Link
+          href={`/create/${draftId}`}
+          className="mt-7 inline-flex items-center gap-2 rounded-full bg-berry px-6 py-3 text-sm font-bold text-paper transition hover:-translate-y-0.5"
+        >
+          <ArrowLeft className="size-4" />
+          {actionLabel}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 function ReviewItem({
   label,
   value,
@@ -466,6 +666,19 @@ function formatTheme(
 
       default:
         return "Pressed Flowers";
+    }
+  }
+
+  if (templateKey === "photo_puzzle") {
+    switch (theme) {
+      case "romantic-pieces":
+        return "Romantic Pieces";
+
+      case "playful-pieces":
+        return "Playful Pieces";
+
+      default:
+        return "Classic Pieces";
     }
   }
 

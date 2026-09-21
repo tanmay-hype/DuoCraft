@@ -137,3 +137,22 @@ export async function uploadDraftPhoto(
     upload.asset_id,
   );
 }
+
+export async function getDraftPhotos(
+  draftId: string,
+): Promise<PhotoAsset[]> {
+  const response = await fetch(
+    `${API_URL}/drafts/${draftId}/photos`,
+    {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return response.json() as Promise<PhotoAsset[]>;
+}

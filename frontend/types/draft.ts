@@ -8,6 +8,11 @@ export type ThankYouTheme =
   | "warm-paper"
   | "garden-note";
 
+export type PhotoPuzzleTheme =
+  | "classic-pieces"
+  | "romantic-pieces"
+  | "playful-pieces";
+
 export type BirthdayPersonalization = {
   recipient_name: string;
   sender_name: string;
@@ -20,6 +25,13 @@ export type ThankYouPersonalization = {
   sender_name: string;
   headline: string;
   message: string;
+};
+
+export type PhotoPuzzlePersonalization = {
+  recipient_name: string;
+  sender_name: string;
+  message: string;
+  photo_asset_id: string | null;
 };
 
 export type Draft = {

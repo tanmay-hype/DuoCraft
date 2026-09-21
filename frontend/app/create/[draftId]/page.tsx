@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BirthdayBuilder } from "@/components/gifts/birthday/birthday-builder";
+import { PhotoPuzzleBuilder } from "@/components/gifts/photo-puzzle/photo-puzzle-builder";
 import { ThankYouBuilder } from "@/components/gifts/thank-you/thank-you-builder";
 import { getDraft } from "@/lib/api/drafts";
 import type { Draft } from "@/types/draft";
@@ -103,6 +104,16 @@ export default function CreateGiftPage() {
     );
   }
 
+  if (draft.template_key === "photo_puzzle") {
+    return (
+      <main className="min-h-screen bg-cream">
+        <div className="page-shell py-10 sm:py-14">
+          <PhotoPuzzleBuilder draft={draft} />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-cream">
       <div className="page-shell py-24">
@@ -116,8 +127,9 @@ export default function CreateGiftPage() {
           </h1>
 
           <p className="mt-4 leading-7 text-ink-soft">
-            Birthday and Thank You are available now. The
-            remaining DuoCraft templates are being added.
+            Birthday, Thank You, and Photo Puzzle are available
+            now. The remaining DuoCraft templates are being
+            added.
           </p>
         </div>
       </div>

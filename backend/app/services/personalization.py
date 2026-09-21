@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from app.schemas.personalization import (
     BirthdayPersonalization,
+    PhotoPuzzlePersonalization,
     ThankYouPersonalization,
 )
 
@@ -19,8 +20,15 @@ THANK_YOU_THEMES = {
     "garden-note",
 }
 
+PHOTO_PUZZLE_THEMES = {
+    "classic-pieces",
+    "romantic-pieces",
+    "playful-pieces",
+}
+
 DEFAULT_BIRTHDAY_THEME = "warm-confetti"
 DEFAULT_THANK_YOU_THEME = "pressed-flowers"
+DEFAULT_PHOTO_PUZZLE_THEME = "classic-pieces"
 
 
 class PersonalizationValidationError(ValueError):
@@ -40,6 +48,12 @@ def validate_personalization(
 
         if template_key == "thank_you":
             validated = ThankYouPersonalization.model_validate(
+                personalization,
+            )
+            return validated.model_dump()
+
+        if template_key == "photo_puzzle":
+            validated = PhotoPuzzlePersonalization.model_validate(
                 personalization,
             )
             return validated.model_dump()
@@ -76,6 +90,17 @@ def validate_theme(
         if theme_key not in THANK_YOU_THEMES:
             raise PersonalizationValidationError(
                 "Invalid thank-you theme.",
+            )
+
+        return theme_key
+
+    if template_key == "photo_puzzle":
+        if theme_key is None:
+            return DEFAULT_PHOTO_PUZZLE_THEME
+
+        if theme_key not in PHOTO_PUZZLE_THEMES:
+            raise PersonalizationValidationError(
+                "Invalid photo puzzle theme.",
             )
 
         return theme_key

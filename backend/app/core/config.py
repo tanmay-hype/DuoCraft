@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     photo_upload_url_expiry_seconds: int = 900
     photo_view_url_expiry_seconds: int = 900
 
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_currency: str = "INR"
+    razorpay_timeout_seconds: float = 10.0
+
 
 @lru_cache
 def get_settings() -> Settings:

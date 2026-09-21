@@ -6,6 +6,13 @@ from app.schemas.catalog import (
     ProductAdminUpdate,
     ProductResponse,
 )
+from app.schemas.checkout import (
+    CheckoutAddonSnapshot,
+    CheckoutOrderCreate,
+    CheckoutOrderResponse,
+    CheckoutPricingSnapshot,
+    CheckoutProductSnapshot,
+)
 from app.schemas.draft import (
     DraftCreate,
     DraftResponse,
@@ -22,4 +29,9 @@ __all__ = [
     "ProductAdminResponse",
     "ProductAdminUpdate",
     "ProductResponse",
+    "CheckoutAddonSnapshot",
+    "CheckoutOrderCreate",
+    "CheckoutOrderResponse",
+    "CheckoutPricingSnapshot",
+    "CheckoutProductSnapshot",
 ]

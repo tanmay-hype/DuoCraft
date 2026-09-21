@@ -159,7 +159,5 @@ def get_photo_view_url(
     return PhotoViewUrlResponse(
         asset_id=asset.id,
         view_url=view_url,
-        expires_in_seconds=(
-            settings.photo_upload_url_expiry_seconds
-        ),
+        expires_in_seconds=(settings.photo_upload_url_expiry_seconds),
     )

@@ -35,6 +35,7 @@ class PhotoAssetResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class PhotoViewUrlResponse(BaseModel):
     asset_id: UUID
     view_url: str

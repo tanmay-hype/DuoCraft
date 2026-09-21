@@ -151,7 +151,7 @@ class PhotoAssetService:
         )
 
         return asset, view_url
-    
+
     def _validate_upload(
         self,
         *,

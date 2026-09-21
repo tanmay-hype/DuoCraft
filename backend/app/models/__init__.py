@@ -1,5 +1,6 @@
 from app.models.addon import Addon
 from app.models.draft import Draft
+from app.models.order import Order
 from app.models.photo_asset import PhotoAsset
 from app.models.product import Product
 
@@ -8,4 +9,5 @@ __all__ = [
     "Draft",
     "PhotoAsset",
     "Product",
+    "Order",
 ]

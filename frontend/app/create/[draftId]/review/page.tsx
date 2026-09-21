@@ -13,8 +13,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PhotoPuzzleBoard } from "@/components/gifts/photo-puzzle/photo-puzzle-board";
 import { getDraft } from "@/lib/api/drafts";
-import { getDraftPhotos, type PhotoAsset } from "@/lib/api/photos";
+import {
+  getDraftPhotos,
+  getPhotoViewUrl,
+  type PhotoAsset,
+} from "@/lib/api/photos";
 import type {
   BirthdayPersonalization,
   Draft,
@@ -104,6 +109,10 @@ export default function ReviewGiftPage() {
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [photo, setPhoto] = useState<PhotoAsset | null>(null);
+  const [photoViewUrl, setPhotoViewUrl] =
+    useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -124,6 +133,9 @@ export default function ReviewGiftPage() {
           const personalization =
             getPhotoPuzzlePersonalization(loadedDraft);
 
+          setPhotoLoading(true);
+          setPhotoError("");
+
           const photos = await getDraftPhotos(draftId);
 
           if (!active) {
@@ -133,11 +145,49 @@ export default function ReviewGiftPage() {
           const selectedPhoto =
             photos.find(
               (asset) =>
-                asset.id === personalization.photo_asset_id &&
+                asset.id ===
+                  personalization.photo_asset_id &&
                 asset.status === "uploaded",
             ) ?? null;
 
           setPhoto(selectedPhoto);
+
+          if (!selectedPhoto) {
+            setPhotoViewUrl(null);
+            setPhotoError(
+              "The uploaded photo could not be found.",
+            );
+            setPhotoLoading(false);
+            return;
+          }
+
+          try {
+            const result = await getPhotoViewUrl(
+              draftId,
+              selectedPhoto.id,
+            );
+
+            if (!active) {
+              return;
+            }
+
+            setPhotoViewUrl(result.view_url);
+          } catch (caughtError) {
+            if (!active) {
+              return;
+            }
+
+            setPhotoViewUrl(null);
+            setPhotoError(
+              caughtError instanceof Error
+                ? caughtError.message
+                : "Unable to load the photo preview.",
+            );
+          } finally {
+            if (active) {
+              setPhotoLoading(false);
+            }
+          }
         }
       } catch (caughtError) {
         if (active) {
@@ -246,12 +296,16 @@ export default function ReviewGiftPage() {
         <PhotoPuzzleReviewPreview
           personalization={personalization}
           photo={photo}
+          photoViewUrl={photoViewUrl}
+          photoLoading={photoLoading}
+          photoError={photoError}
         />
       </ReviewLayout>
     );
   }
 
   const personalization = getTextPersonalization(draft);
+
   const complete =
     isTextPersonalizationComplete(personalization);
 
@@ -517,9 +571,15 @@ function ThankYouReviewPreview({
 function PhotoPuzzleReviewPreview({
   personalization,
   photo,
+  photoViewUrl,
+  photoLoading,
+  photoError,
 }: {
   personalization: PhotoPuzzlePersonalization;
   photo: PhotoAsset;
+  photoViewUrl: string | null;
+  photoLoading: boolean;
+  photoError: string;
 }) {
   return (
     <section className="relative overflow-hidden rounded-[2.3rem_1.5rem_2.5rem_1.8rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
@@ -542,28 +602,59 @@ function PhotoPuzzleReviewPreview({
           {personalization.recipient_name}
         </h2>
 
-        <div className="mt-8 flex min-h-56 items-center justify-center rounded-[1.75rem] border border-dashed border-rose/40 bg-cream p-8 text-center">
-          <div>
-            <ImageIcon className="mx-auto size-10 text-rose" />
+        <div className="mt-8">
+          {photoLoading ? (
+            <div className="flex aspect-square w-full items-center justify-center rounded-[1.75rem] border border-dashed border-line bg-cream p-8 text-center">
+              <div>
+                <ImageIcon className="mx-auto size-10 animate-pulse text-rose/60" />
 
-            <p className="mt-4 font-bold text-ink">
-              Photo ready for the puzzle
-            </p>
+                <p className="mt-4 font-bold text-ink">
+                  Preparing your puzzle...
+                </p>
 
-            <p className="mt-2 break-all text-xs text-ink-muted">
-              {photo.original_filename}
-            </p>
-
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-xs font-bold text-berry">
-              <Check className="size-3.5" />
-              Upload verified
+                <p className="mt-2 text-sm leading-6 text-ink-soft">
+                  Loading your private photo preview.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : photoViewUrl ? (
+            <div className="rounded-[1.75rem] bg-cream p-4 sm:p-5">
+              <PhotoPuzzleBoard
+                imageUrl={photoViewUrl}
+                recipientName={
+                  personalization.recipient_name
+                }
+                interactive
+              />
+            </div>
+          ) : (
+            <div className="flex min-h-56 items-center justify-center rounded-[1.75rem] border border-dashed border-rose/40 bg-cream p-8 text-center">
+              <div>
+                <ImageIcon className="mx-auto size-10 text-rose" />
+
+                <p className="mt-4 font-bold text-ink">
+                  Your photo is uploaded
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-ink-soft">
+                  We couldn&apos;t load the private preview yet.
+                </p>
+
+                {photoError ? (
+                  <p className="mt-3 text-xs leading-5 text-berry">
+                    {photoError}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )}
         </div>
 
-        <p className="mt-8 whitespace-pre-wrap leading-8 text-ink-soft">
-          {personalization.message}
-        </p>
+        <div className="mt-8 border-t border-line pt-7">
+          <p className="whitespace-pre-wrap leading-8 text-ink-soft">
+            {personalization.message}
+          </p>
+        </div>
       </div>
 
       <div>
@@ -574,6 +665,13 @@ function PhotoPuzzleReviewPreview({
         <p className="script mt-1 text-3xl text-ink">
           {personalization.sender_name}
         </p>
+      </div>
+
+      <div className="mt-7 flex items-center gap-2 rounded-2xl bg-rose/10 px-4 py-3 text-xs font-medium text-ink-soft">
+        <Check className="size-4 text-rose" />
+        <span>
+          {photo.original_filename} · photo upload verified
+        </span>
       </div>
     </section>
   );

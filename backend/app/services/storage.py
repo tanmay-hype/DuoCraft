@@ -79,7 +79,6 @@ class StorageService:
         except (BotoCoreError, ClientError) as exc:
             raise StorageError("Unable to create upload URL.") from exc
 
-
     def create_view_url(
         self,
         *,

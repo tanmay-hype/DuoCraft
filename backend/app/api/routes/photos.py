@@ -13,6 +13,7 @@ from app.schemas.photo_asset import (
     PhotoAssetResponse,
     PhotoUploadRequest,
     PhotoUploadResponse,
+    PhotoViewUrlResponse,
 )
 from app.services.photo_assets import (
     PhotoAssetNotFoundError,
@@ -120,4 +121,45 @@ def list_draft_photos(
 
     return service.list_for_draft(
         draft=draft,
+    )
+
+
+@router.get(
+    "/{asset_id}/view-url",
+    response_model=PhotoViewUrlResponse,
+)
+def get_photo_view_url(
+    asset_id: UUID,
+    draft: OwnedDraft,
+    db: DatabaseSession,
+) -> PhotoViewUrlResponse:
+    service = PhotoAssetService(db)
+
+    try:
+        asset, view_url = service.create_view_url(
+            draft=draft,
+            asset_id=asset_id,
+        )
+    except PhotoAssetNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Photo asset not found.",
+        ) from exc
+    except PhotoAssetValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except StorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to create photo preview.",
+        ) from exc
+
+    return PhotoViewUrlResponse(
+        asset_id=asset.id,
+        view_url=view_url,
+        expires_in_seconds=(
+            settings.photo_upload_url_expiry_seconds
+        ),
     )

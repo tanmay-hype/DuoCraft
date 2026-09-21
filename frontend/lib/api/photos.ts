@@ -156,3 +156,29 @@ export async function getDraftPhotos(
 
   return response.json() as Promise<PhotoAsset[]>;
 }
+
+type PhotoViewUrlResponse = {
+  asset_id: string;
+  view_url: string;
+  expires_in_seconds: number;
+};
+
+export async function getPhotoViewUrl(
+  draftId: string,
+  assetId: string,
+): Promise<PhotoViewUrlResponse> {
+  const response = await fetch(
+    `${API_URL}/drafts/${draftId}/photos/${assetId}/view-url`,
+    {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return response.json() as Promise<PhotoViewUrlResponse>;
+}

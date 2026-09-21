@@ -79,6 +79,25 @@ class StorageService:
         except (BotoCoreError, ClientError) as exc:
             raise StorageError("Unable to create upload URL.") from exc
 
+
+    def create_view_url(
+        self,
+        *,
+        storage_key: str,
+    ) -> str:
+        try:
+            return self.presign_client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={
+                    "Bucket": self.bucket_name,
+                    "Key": storage_key,
+                },
+                ExpiresIn=(settings.photo_view_url_expiry_seconds),
+                HttpMethod="GET",
+            )
+        except (BotoCoreError, ClientError) as exc:
+            raise StorageError("Unable to create view URL.") from exc
+
     def get_object_metadata(
         self,
         *,

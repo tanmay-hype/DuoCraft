@@ -125,6 +125,33 @@ class PhotoAssetService:
             .all()
         )
 
+    def create_view_url(
+        self,
+        *,
+        draft: Draft,
+        asset_id: UUID,
+    ) -> tuple[PhotoAsset, str]:
+        asset = (
+            self.db.query(PhotoAsset)
+            .filter(
+                PhotoAsset.id == asset_id,
+                PhotoAsset.draft_id == draft.id,
+            )
+            .one_or_none()
+        )
+
+        if asset is None:
+            raise PhotoAssetNotFoundError
+
+        if asset.status != "uploaded":
+            raise PhotoAssetValidationError("Photo asset is not uploaded yet.")
+
+        view_url = self.storage.create_view_url(
+            storage_key=asset.storage_key,
+        )
+
+        return asset, view_url
+    
     def _validate_upload(
         self,
         *,

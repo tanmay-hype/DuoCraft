@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     photo_upload_max_bytes: int = 10 * 1024 * 1024
     photo_upload_url_expiry_seconds: int = 900
+    photo_view_url_expiry_seconds: int = 900
 
 
 @lru_cache

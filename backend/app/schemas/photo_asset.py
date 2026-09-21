@@ -34,3 +34,8 @@ class PhotoAssetResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+
+class PhotoViewUrlResponse(BaseModel):
+    asset_id: UUID
+    view_url: str
+    expires_in_seconds: int

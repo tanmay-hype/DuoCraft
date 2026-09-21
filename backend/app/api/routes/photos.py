@@ -8,6 +8,7 @@ from app.api.dependencies.drafts import get_owned_draft
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.draft import Draft
+from app.models.photo_asset import PhotoAsset
 from app.schemas.photo_asset import (
     PhotoAssetResponse,
     PhotoUploadRequest,
@@ -105,3 +106,18 @@ def confirm_photo_upload(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unable to verify the uploaded photo.",
         ) from exc
+
+
+@router.get(
+    "",
+    response_model=list[PhotoAssetResponse],
+)
+def list_draft_photos(
+    draft: OwnedDraft,
+    db: DatabaseSession,
+) -> list[PhotoAsset]:
+    service = PhotoAssetService(db)
+
+    return service.list_for_draft(
+        draft=draft,
+    )

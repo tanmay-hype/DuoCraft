@@ -113,6 +113,18 @@ class PhotoAssetService:
 
         return asset
 
+    def list_for_draft(
+        self,
+        *,
+        draft: Draft,
+    ) -> list[PhotoAsset]:
+        return (
+            self.db.query(PhotoAsset)
+            .filter(PhotoAsset.draft_id == draft.id)
+            .order_by(PhotoAsset.created_at.desc())
+            .all()
+        )
+
     def _validate_upload(
         self,
         *,

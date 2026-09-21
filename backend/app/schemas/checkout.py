@@ -46,3 +46,12 @@ class CheckoutOrderResponse(BaseModel):
     total_amount: int
     customer_email: str | None
     pricing_snapshot: CheckoutPricingSnapshot
+
+
+class PaymentOrderResponse(BaseModel):
+    order_id: UUID
+    provider: str
+    provider_order_id: str
+    amount: int
+    currency: str
+    key_id: str

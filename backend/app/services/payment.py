@@ -33,14 +33,10 @@ class RazorpayService:
         receipt: str,
     ) -> dict[str, Any]:
         if not settings.razorpay_key_id:
-            raise PaymentProviderError(
-                "Razorpay key ID is not configured."
-            )
+            raise PaymentProviderError("Razorpay key ID is not configured.")
 
         if not settings.razorpay_key_secret:
-            raise PaymentProviderError(
-                "Razorpay key secret is not configured."
-            )
+            raise PaymentProviderError("Razorpay key secret is not configured.")
 
         payload = {
             "amount": amount,
@@ -54,27 +50,19 @@ class RazorpayService:
                 json=payload,
             )
         except httpx.HTTPError as exc:
-            raise PaymentProviderError(
-                "Unable to reach Razorpay."
-            ) from exc
+            raise PaymentProviderError("Unable to reach Razorpay.") from exc
 
         if response.is_error:
-            raise PaymentProviderError(
-                "Razorpay rejected the order."
-            )
+            raise PaymentProviderError("Razorpay rejected the order.")
 
         try:
             data = response.json()
         except ValueError as exc:
-            raise PaymentProviderError(
-                "Razorpay returned an invalid response."
-            ) from exc
+            raise PaymentProviderError("Razorpay returned an invalid response.") from exc
 
         provider_order_id = data.get("id")
 
         if not isinstance(provider_order_id, str):
-            raise PaymentProviderError(
-                "Razorpay response did not contain an order ID."
-            )
+            raise PaymentProviderError("Razorpay response did not contain an order ID.")
 
         return data

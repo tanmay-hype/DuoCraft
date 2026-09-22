@@ -55,3 +55,24 @@ class PaymentOrderResponse(BaseModel):
     amount: int
     currency: str
     key_id: str
+
+
+class PaymentVerificationRequest(BaseModel):
+    razorpay_payment_id: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+    razorpay_order_id: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+    razorpay_signature: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+
+
+class PaymentVerificationResponse(BaseModel):
+    order_id: UUID
+    status: str
+    payment_id: str

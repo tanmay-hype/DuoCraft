@@ -5,8 +5,10 @@ from app.api.routes.admin_catalog import (
     router as admin_catalog_router,
 )
 from app.api.routes.catalog import router as catalog_router
+from app.api.routes.checkout import router as checkout_router
 from app.api.routes.drafts import router as drafts_router
 from app.api.routes.health import router as health_router
+from app.api.routes.payments import router as payments_router
 from app.api.routes.photos import router as photos_router
 from app.core.config import settings
 
@@ -31,6 +33,8 @@ def create_app() -> FastAPI:
     application.include_router(admin_catalog_router)
     application.include_router(drafts_router)
     application.include_router(photos_router)
+    application.include_router(checkout_router)
+    application.include_router(payments_router)
     return application
 
 

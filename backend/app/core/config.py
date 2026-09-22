@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     razorpay_key_secret: str = ""
     razorpay_currency: str = "INR"
     razorpay_timeout_seconds: float = 10.0
+    razorpay_webhook_secret: str = ""
 
 
 @lru_cache

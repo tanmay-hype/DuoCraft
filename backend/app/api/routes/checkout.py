@@ -150,7 +150,7 @@ def create_payment_order(
             detail="You do not have access to this order.",
         )
 
-    if order.status != "pending":
+    if order.status not in {"pending", "payment_pending"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Order is not available for payment.",
@@ -184,6 +184,7 @@ def create_payment_order(
 
     order.payment_provider = "razorpay"
     order.provider_order_id = provider_order["id"]
+    order.status = "payment_pending"
 
     try:
         db.commit()

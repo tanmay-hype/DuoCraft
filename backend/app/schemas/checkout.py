@@ -5,10 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class CheckoutOrderCreate(BaseModel):
     draft_id: UUID
-    addon_ids: list[int] = Field(
-        default_factory=list,
-        max_length=10,
-    )
+    addon_ids: list[int] = Field(default_factory=list, max_length=10)
     customer_email: EmailStr | None = None
 
 
@@ -48,6 +45,14 @@ class CheckoutOrderResponse(BaseModel):
     pricing_snapshot: CheckoutPricingSnapshot
 
 
+class CheckoutOrderStatusResponse(BaseModel):
+    order_id: UUID
+    draft_id: UUID
+    status: str
+    currency: str
+    total_amount: int
+
+
 class PaymentOrderResponse(BaseModel):
     order_id: UUID
     provider: str
@@ -58,18 +63,9 @@ class PaymentOrderResponse(BaseModel):
 
 
 class PaymentVerificationRequest(BaseModel):
-    razorpay_payment_id: str = Field(
-        min_length=1,
-        max_length=255,
-    )
-    razorpay_order_id: str = Field(
-        min_length=1,
-        max_length=255,
-    )
-    razorpay_signature: str = Field(
-        min_length=1,
-        max_length=255,
-    )
+    razorpay_payment_id: str = Field(min_length=1, max_length=255)
+    razorpay_order_id: str = Field(min_length=1, max_length=255)
+    razorpay_signature: str = Field(min_length=1, max_length=255)
 
 
 class PaymentVerificationResponse(BaseModel):

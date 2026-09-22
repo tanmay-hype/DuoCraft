@@ -1,59 +1,85 @@
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import (
-    APIRouter,
-    Cookie,
-    Depends,
-    HTTPException,
-    status,
-)
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.drafts import (
+    DatabaseSession,
+    DraftOwnerToken,
+)
 from app.core.config import settings
-from app.core.database import get_db
 from app.core.draft_security import owner_token_matches
-from app.models import Order
+from app.models import Draft, Order
 from app.schemas.checkout import (
     CheckoutOrderCreate,
     CheckoutOrderResponse,
-    CheckoutPricingSnapshot,
+    CheckoutOrderStatusResponse,
     PaymentOrderResponse,
     PaymentVerificationRequest,
     PaymentVerificationResponse,
 )
-from app.services.checkout import (
-    CheckoutService,
-    CheckoutValidationError,
-)
+from app.services.checkout import CheckoutService, CheckoutValidationError
 from app.services.draft import DraftService
 from app.services.payment import (
     PaymentProviderError,
     RazorpayService,
 )
 
-router = APIRouter(
-    prefix="/checkout",
-    tags=["checkout"],
-)
+router = APIRouter(prefix="/checkout", tags=["checkout"])
+
+
+def get_owned_order(
+    *,
+    db: Session,
+    order_id: UUID,
+    owner_token: str | None,
+) -> Order:
+    order = db.get(Order, order_id)
+
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found.",
+        )
+
+    draft = db.get(Draft, order.draft_id)
+
+    if draft is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Draft not found.",
+        )
+
+    if owner_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this order.",
+        )
+
+    if not owner_token_matches(
+        owner_token,
+        draft.owner_token_hash,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this order.",
+        )
+
+    return order
 
 
 @router.post(
     "/orders",
     response_model=CheckoutOrderResponse,
-    status_code=status.HTTP_201_CREATED,
 )
 def create_checkout_order(
-    data: CheckoutOrderCreate,
-    db: Annotated[Session, Depends(get_db)],
-    owner_token: Annotated[
-        str | None,
-        Cookie(alias=settings.draft_cookie_name),
-    ] = None,
+    payload: CheckoutOrderCreate,
+    db: DatabaseSession,
+    owner_token: DraftOwnerToken = None,
 ) -> CheckoutOrderResponse:
     draft_service = DraftService(db)
 
-    draft = draft_service.get_draft(data.draft_id)
+    draft = draft_service.get_draft(payload.draft_id)
 
     if draft is None:
         raise HTTPException(
@@ -64,7 +90,7 @@ def create_checkout_order(
     if draft_service.is_expired(draft):
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
-            detail="Draft has expired.",
+            detail="This draft has expired.",
         )
 
     if owner_token is None or not owner_token_matches(
@@ -76,13 +102,13 @@ def create_checkout_order(
             detail="You do not have access to this draft.",
         )
 
-    service = CheckoutService(db)
+    checkout_service = CheckoutService(db)
 
     try:
-        order = service.create_order(
+        order = checkout_service.create_order(
             draft=draft,
-            addon_ids=data.addon_ids,
-            customer_email=data.customer_email,
+            addon_ids=payload.addon_ids,
+            customer_email=(str(payload.customer_email) if payload.customer_email else None),
         )
     except CheckoutValidationError as exc:
         raise HTTPException(
@@ -99,9 +125,31 @@ def create_checkout_order(
         addon_amount=order.addon_amount,
         total_amount=order.total_amount,
         customer_email=order.customer_email,
-        pricing_snapshot=CheckoutPricingSnapshot.model_validate(
-            order.pricing_snapshot,
-        ),
+        pricing_snapshot=order.pricing_snapshot,
+    )
+
+
+@router.get(
+    "/orders/{order_id}",
+    response_model=CheckoutOrderStatusResponse,
+)
+def get_checkout_order_status(
+    order_id: UUID,
+    db: DatabaseSession,
+    owner_token: DraftOwnerToken = None,
+) -> CheckoutOrderStatusResponse:
+    order = get_owned_order(
+        db=db,
+        order_id=order_id,
+        owner_token=owner_token,
+    )
+
+    return CheckoutOrderStatusResponse(
+        order_id=order.id,
+        draft_id=order.draft_id,
+        status=order.status,
+        currency=order.currency,
+        total_amount=order.total_amount,
     )
 
 
@@ -111,44 +159,14 @@ def create_checkout_order(
 )
 def create_payment_order(
     order_id: UUID,
-    db: Annotated[Session, Depends(get_db)],
-    owner_token: Annotated[
-        str | None,
-        Cookie(alias=settings.draft_cookie_name),
-    ] = None,
+    db: DatabaseSession,
+    owner_token: DraftOwnerToken = None,
 ) -> PaymentOrderResponse:
-    order = db.get(Order, order_id)
-
-    if order is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found.",
-        )
-
-    draft_service = DraftService(db)
-
-    draft = draft_service.get_draft(order.draft_id)
-
-    if draft is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found.",
-        )
-
-    if draft_service.is_expired(draft):
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail="Draft has expired.",
-        )
-
-    if owner_token is None or not owner_token_matches(
-        owner_token,
-        draft.owner_token_hash,
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this order.",
-        )
+    order = get_owned_order(
+        db=db,
+        order_id=order_id,
+        owner_token=owner_token,
+    )
 
     if order.status not in {"pending", "payment_pending"}:
         raise HTTPException(
@@ -156,10 +174,10 @@ def create_payment_order(
             detail="Order is not available for payment.",
         )
 
-    if order.provider_order_id:
+    if order.payment_provider == "razorpay" and order.provider_order_id:
         return PaymentOrderResponse(
             order_id=order.id,
-            provider=order.payment_provider or "razorpay",
+            provider="razorpay",
             provider_order_id=order.provider_order_id,
             amount=order.total_amount,
             currency=order.currency,
@@ -186,17 +204,13 @@ def create_payment_order(
     order.provider_order_id = provider_order["id"]
     order.status = "payment_pending"
 
-    try:
-        db.commit()
-        db.refresh(order)
-    except Exception:
-        db.rollback()
-        raise
+    db.commit()
+    db.refresh(order)
 
     return PaymentOrderResponse(
         order_id=order.id,
         provider="razorpay",
-        provider_order_id=order.provider_order_id,
+        provider_order_id=provider_order["id"],
         amount=order.total_amount,
         currency=order.currency,
         key_id=settings.razorpay_key_id,
@@ -209,75 +223,45 @@ def create_payment_order(
 )
 def verify_payment(
     order_id: UUID,
-    data: PaymentVerificationRequest,
-    db: Annotated[Session, Depends(get_db)],
-    owner_token: Annotated[
-        str | None,
-        Cookie(alias=settings.draft_cookie_name),
-    ] = None,
+    payload: PaymentVerificationRequest,
+    db: DatabaseSession,
+    owner_token: DraftOwnerToken = None,
 ) -> PaymentVerificationResponse:
-    order = db.get(Order, order_id)
-
-    if order is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found.",
-        )
-
-    draft_service = DraftService(db)
-
-    draft = draft_service.get_draft(order.draft_id)
-
-    if draft is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found.",
-        )
-
-    if draft_service.is_expired(draft):
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail="Draft has expired.",
-        )
-
-    if owner_token is None or not owner_token_matches(
-        owner_token,
-        draft.owner_token_hash,
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this order.",
-        )
+    order = get_owned_order(
+        db=db,
+        order_id=order_id,
+        owner_token=owner_token,
+    )
 
     if order.payment_provider != "razorpay":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Order is not a Razorpay order.",
+            detail="Order is not configured for Razorpay.",
         )
 
-    if order.provider_order_id != data.razorpay_order_id:
+    if order.provider_order_id != payload.razorpay_order_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Payment order does not match.",
+            detail="Payment order does not match this order.",
         )
 
     razorpay = RazorpayService()
 
     try:
-        valid_signature = razorpay.verify_payment_signature(
-            order_id=order.provider_order_id,
-            payment_id=data.razorpay_payment_id,
-            signature=data.razorpay_signature,
+        signature_valid = razorpay.verify_payment_signature(
+            order_id=payload.razorpay_order_id,
+            payment_id=payload.razorpay_payment_id,
+            signature=payload.razorpay_signature,
         )
 
-        if not valid_signature:
+        if not signature_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid payment signature.",
             )
 
         payment = razorpay.get_payment(
-            payment_id=data.razorpay_payment_id,
+            payment_id=payload.razorpay_payment_id,
         )
     except PaymentProviderError as exc:
         raise HTTPException(
@@ -290,10 +274,10 @@ def verify_payment(
     if payment.get("order_id") != order.provider_order_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Payment order does not match.",
+            detail="Payment does not belong to this order.",
         )
 
-    if payment.get("amount") != order.total_amount:
+    if int(payment.get("amount", -1)) != order.total_amount:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Payment amount does not match the order.",
@@ -305,29 +289,15 @@ def verify_payment(
             detail="Payment currency does not match the order.",
         )
 
-    if payment.get("status") != "captured":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Payment has not been captured.",
-        )
+    order.provider_payment_id = payload.razorpay_payment_id
 
-    if order.status != "paid":
-        order.status = "paid"
-        order.provider_payment_id = data.razorpay_payment_id
+    if order.status == "pending":
+        order.status = "payment_pending"
 
-        from datetime import UTC, datetime
-
-        order.paid_at = datetime.now(UTC)
-
-        try:
-            db.commit()
-            db.refresh(order)
-        except Exception:
-            db.rollback()
-            raise
+    db.commit()
 
     return PaymentVerificationResponse(
         order_id=order.id,
         status=order.status,
-        payment_id=data.razorpay_payment_id,
+        payment_id=payload.razorpay_payment_id,
     )

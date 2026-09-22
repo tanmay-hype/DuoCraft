@@ -35,6 +35,14 @@ export type CheckoutOrder = {
   pricing_snapshot: CheckoutPricingSnapshot;
 };
 
+export type CheckoutOrderStatus = {
+  order_id: string;
+  draft_id: string;
+  status: string;
+  currency: string;
+  total_amount: number;
+};
+
 export type PaymentOrder = {
   order_id: string;
   provider: string;
@@ -58,40 +66,27 @@ export type CatalogAddon = {
   price: number;
 };
 
-async function getErrorMessage(
-  response: Response,
-): Promise<string> {
+async function getErrorMessage(response: Response): Promise<string> {
   try {
-    const body = await response.json();
+    const body = (await response.json()) as {
+      detail?: string;
+    };
 
-    if (
-      body &&
-      typeof body.detail === "string"
-    ) {
-      return body.detail;
-    }
+    return body.detail ?? "Something went wrong.";
   } catch {
-    // Ignore invalid error bodies.
+    return "Something went wrong.";
   }
-
-  return "Something went wrong. Please try again.";
 }
 
-export async function getAddons(): Promise<
-  CatalogAddon[]
-> {
-  const response = await fetch(
-    `${API_URL}/addons`,
-    {
-      credentials: "include",
-      cache: "no-store",
-    },
-  );
+export async function getAddons(): Promise<CatalogAddon[]> {
+  const response = await fetch(`${API_URL}/addons`, {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
 
   if (!response.ok) {
-    throw new Error(
-      await getErrorMessage(response),
-    );
+    throw new Error(await getErrorMessage(response));
   }
 
   return response.json() as Promise<CatalogAddon[]>;
@@ -102,27 +97,21 @@ export async function createCheckoutOrder(
   addonIds: number[],
   customerEmail?: string,
 ): Promise<CheckoutOrder> {
-  const response = await fetch(
-    `${API_URL}/checkout/orders`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        draft_id: draftId,
-        addon_ids: addonIds,
-        customer_email:
-          customerEmail || null,
-      }),
+  const response = await fetch(`${API_URL}/checkout/orders`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      draft_id: draftId,
+      addon_ids: addonIds,
+      customer_email: customerEmail || undefined,
+    }),
+  });
 
   if (!response.ok) {
-    throw new Error(
-      await getErrorMessage(response),
-    );
+    throw new Error(await getErrorMessage(response));
   }
 
   return response.json() as Promise<CheckoutOrder>;
@@ -136,13 +125,12 @@ export async function createPaymentOrder(
     {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
     },
   );
 
   if (!response.ok) {
-    throw new Error(
-      await getErrorMessage(response),
-    );
+    throw new Error(await getErrorMessage(response));
   }
 
   return response.json() as Promise<PaymentOrder>;
@@ -169,10 +157,27 @@ export async function verifyPayment(
   );
 
   if (!response.ok) {
-    throw new Error(
-      await getErrorMessage(response),
-    );
+    throw new Error(await getErrorMessage(response));
   }
 
   return response.json() as Promise<PaymentVerification>;
+}
+
+export async function getCheckoutOrderStatus(
+  orderId: string,
+): Promise<CheckoutOrderStatus> {
+  const response = await fetch(
+    `${API_URL}/checkout/orders/${orderId}`,
+    {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return response.json() as Promise<CheckoutOrderStatus>;
 }

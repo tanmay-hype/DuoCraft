@@ -15,6 +15,8 @@ import {
   useState,
 } from "react";
 
+import { getCheckoutOrderStatus } from "@/lib/api/checkout";
+
 import {
   CatalogAddon,
   CheckoutOrder,
@@ -176,6 +178,34 @@ export function CheckoutPanel({
     setError(null);
   }
 
+  const waitForPaymentConfirmation = async (
+  orderId: string,
+): Promise<boolean> => {
+  const maxAttempts = 20;
+  const intervalMs = 1500;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const currentOrder = await getCheckoutOrderStatus(orderId);
+
+    if (currentOrder.status === "paid") {
+      return true;
+    }
+
+    if (
+      currentOrder.status === "failed" ||
+      currentOrder.status === "cancelled"
+    ) {
+      return false;
+    }
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, intervalMs);
+    });
+  }
+
+  return false;
+};
+
   async function beginPayment() {
     setError(null);
     setLoadingPayment(true);
@@ -231,6 +261,16 @@ export function CheckoutPanel({
                 checkoutOrder.order_id,
                 response,
               );
+
+              const confirmed = await waitForPaymentConfirmation(
+                order.order_id,
+              );
+
+              if (!confirmed) {
+                throw new Error(
+                  "Payment was recieved , but confirmation is still processing . Please check your email for confirmation or contact support if you do not receive a confirmation within a few minutes.",
+                );
+              }
 
               router.push(
                 `/create/${draftId}/success`,

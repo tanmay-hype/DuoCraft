@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -7,19 +8,18 @@ from app.api.dependencies.drafts import (
     DatabaseSession,
     DraftOwnerToken,
 )
-from datetime import UTC, datetime
 from app.core.config import settings
 from app.core.draft_security import owner_token_matches
 from app.core.gift_security import generate_gift_token
-from app.models import Draft, Order, Gift
+from app.models import Draft, Gift, Order
 from app.schemas.checkout import (
+    CheckoutGiftResponse,
     CheckoutOrderCreate,
     CheckoutOrderResponse,
     CheckoutOrderStatusResponse,
     PaymentOrderResponse,
     PaymentVerificationRequest,
     PaymentVerificationResponse,
-    CheckoutGiftResponse,
 )
 from app.services.checkout import CheckoutService, CheckoutValidationError
 from app.services.draft import DraftService

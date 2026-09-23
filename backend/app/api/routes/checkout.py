@@ -7,9 +7,11 @@ from app.api.dependencies.drafts import (
     DatabaseSession,
     DraftOwnerToken,
 )
+from datetime import UTC, datetime
 from app.core.config import settings
 from app.core.draft_security import owner_token_matches
-from app.models import Draft, Order
+from app.core.gift_security import generate_gift_token
+from app.models import Draft, Order, Gift
 from app.schemas.checkout import (
     CheckoutOrderCreate,
     CheckoutOrderResponse,
@@ -17,6 +19,7 @@ from app.schemas.checkout import (
     PaymentOrderResponse,
     PaymentVerificationRequest,
     PaymentVerificationResponse,
+    CheckoutGiftResponse,
 )
 from app.services.checkout import CheckoutService, CheckoutValidationError
 from app.services.draft import DraftService
@@ -300,4 +303,82 @@ def verify_payment(
         order_id=order.id,
         status=order.status,
         payment_id=payload.razorpay_payment_id,
+    )
+
+
+@router.get(
+    "/orders/{order_id}/gift",
+    response_model=CheckoutGiftResponse,
+)
+def get_checkout_gift(
+    order_id: UUID,
+    db: DatabaseSession,
+    owner_token: DraftOwnerToken = None,
+) -> CheckoutGiftResponse:
+    order = db.get(Order, order_id)
+
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found.",
+        )
+
+    draft = db.get(Draft, order.draft_id)
+
+    if draft is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Draft not found.",
+        )
+
+    if draft.expires_at is not None and draft.expires_at <= datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Draft has expired.",
+        )
+
+    if owner_token is None or not owner_token_matches(
+        owner_token,
+        draft.owner_token_hash,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this order.",
+        )
+
+    if order.draft_id != draft.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this order.",
+        )
+
+    if order.status != "paid":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Payment has not been confirmed.",
+        )
+
+    gift = (
+        db.query(Gift)
+        .filter(
+            Gift.order_id == order.id,
+            Gift.status == "active",
+        )
+        .one_or_none()
+    )
+
+    if gift is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Gift is not available yet.",
+        )
+
+    token = generate_gift_token(gift.id)
+
+    gift_url = f"{settings.frontend_origin}/g/{token}"
+
+    return CheckoutGiftResponse(
+        order_id=order.id,
+        gift_id=gift.id,
+        gift_url=gift_url,
     )

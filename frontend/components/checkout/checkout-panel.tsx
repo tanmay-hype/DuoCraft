@@ -15,14 +15,13 @@ import {
   useState,
 } from "react";
 
-import { getCheckoutOrderStatus } from "@/lib/api/checkout";
-
 import {
   CatalogAddon,
   CheckoutOrder,
   createCheckoutOrder,
   createPaymentOrder,
   getAddons,
+  getCheckoutOrderStatus,
   verifyPayment,
 } from "@/lib/api/checkout";
 
@@ -178,33 +177,41 @@ export function CheckoutPanel({
     setError(null);
   }
 
-  const waitForPaymentConfirmation = async (
-  orderId: string,
-): Promise<boolean> => {
-  const maxAttempts = 20;
-  const intervalMs = 1500;
+  async function waitForPaymentConfirmation(
+    orderId: string,
+  ): Promise<boolean> {
+    const maxAttempts = 20;
+    const intervalMs = 1500;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const currentOrder = await getCheckoutOrderStatus(orderId);
-
-    if (currentOrder.status === "paid") {
-      return true;
-    }
-
-    if (
-      currentOrder.status === "failed" ||
-      currentOrder.status === "cancelled"
+    for (
+      let attempt = 0;
+      attempt < maxAttempts;
+      attempt += 1
     ) {
-      return false;
+      const currentOrder =
+        await getCheckoutOrderStatus(orderId);
+
+      if (currentOrder.status === "paid") {
+        return true;
+      }
+
+      if (
+        currentOrder.status === "failed" ||
+        currentOrder.status === "cancelled"
+      ) {
+        return false;
+      }
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(
+          resolve,
+          intervalMs,
+        );
+      });
     }
 
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, intervalMs);
-    });
+    return false;
   }
-
-  return false;
-};
 
   async function beginPayment() {
     setError(null);
@@ -262,18 +269,21 @@ export function CheckoutPanel({
                 response,
               );
 
-              const confirmed = await waitForPaymentConfirmation(
-                checkoutOrder.order_id,
-              );
+              const confirmed =
+                await waitForPaymentConfirmation(
+                  checkoutOrder.order_id,
+                );
 
               if (!confirmed) {
                 throw new Error(
-                  "Payment was recieved , but confirmation is still processing . Please check your email for confirmation or contact support if you do not receive a confirmation within a few minutes.",
+                  "Payment was received, but confirmation is still processing. Please check your email for confirmation or contact support if you do not receive a confirmation within a few minutes.",
                 );
               }
 
               router.push(
-                `/create/${draftId}/success`,
+                `/create/${draftId}/success?orderId=${encodeURIComponent(
+                  checkoutOrder.order_id,
+                )}`,
               );
             } catch (err) {
               setError(
@@ -281,6 +291,7 @@ export function CheckoutPanel({
                   ? err.message
                   : "Payment verification failed.",
               );
+
               setLoadingPayment(false);
             }
           },
@@ -292,6 +303,7 @@ export function CheckoutPanel({
           setError(
             "Payment was not completed. You can try again.",
           );
+
           setLoadingPayment(false);
         },
       );
@@ -303,6 +315,7 @@ export function CheckoutPanel({
           ? err.message
           : "Unable to start payment.",
       );
+
       setLoadingPayment(false);
     }
   }

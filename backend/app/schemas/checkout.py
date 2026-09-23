@@ -72,3 +72,9 @@ class PaymentVerificationResponse(BaseModel):
     order_id: UUID
     status: str
     payment_id: str
+
+
+class CheckoutGiftResponse(BaseModel):
+    order_id: UUID
+    gift_id: UUID
+    gift_url: str

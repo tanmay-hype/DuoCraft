@@ -181,3 +181,29 @@ export async function getCheckoutOrderStatus(
 
   return response.json() as Promise<CheckoutOrderStatus>;
 }
+
+export type CheckoutGift = {
+  order_id: string;
+  gift_id: string;
+  gift_url: string;
+};
+
+export async function getCheckoutGift(
+  orderId: string,
+): Promise<CheckoutGift> {
+  const response = await fetch(
+    `${API_URL}/checkout/orders/${orderId}/gift`,
+    {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return response.json() as Promise<CheckoutGift>;
+}
+

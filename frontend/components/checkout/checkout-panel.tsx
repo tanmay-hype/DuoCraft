@@ -263,7 +263,7 @@ export function CheckoutPanel({
               );
 
               const confirmed = await waitForPaymentConfirmation(
-                order.order_id,
+                checkoutOrder.order_id,
               );
 
               if (!confirmed) {

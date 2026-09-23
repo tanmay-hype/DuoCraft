@@ -12,7 +12,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
+import { CheckoutPanel } from "@/components/checkout/checkout-panel";
 import { PhotoPuzzleBoard } from "@/components/gifts/photo-puzzle/photo-puzzle-board";
 import { getDraft } from "@/lib/api/drafts";
 import {
@@ -442,22 +442,16 @@ function ReviewLayout({
 
                 <p className="text-sm leading-6 text-ink-soft">
                   Your personalization is saved and ready for
-                  the next step.
+                  checkout.
                 </p>
               </div>
 
-              <button
-                type="button"
-                disabled
-                className="mt-7 w-full cursor-not-allowed rounded-full bg-berry px-6 py-3.5 text-sm font-bold text-paper opacity-50"
-              >
-                Checkout coming in Phase 5
-              </button>
-
-              <p className="mt-3 text-center text-xs leading-5 text-ink-muted">
-                Payment is intentionally disabled until the
-                verified checkout flow is implemented.
-              </p>
+              <div className="mt-6">
+                <CheckoutPanel 
+                  draftId={draft.id}
+                  productName={giftName}
+                /> 
+              </div>  
             </aside>
           </div>
         </div>

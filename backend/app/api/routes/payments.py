@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import Order, PaymentEvent
+from app.models import Draft, Order, PaymentEvent
+from app.services.gift import GiftCreationError, GiftService
 from app.services.payment import RazorpayService
 
 router = APIRouter(
@@ -152,9 +153,21 @@ async def razorpay_webhook(
             {},
         )
 
-        payment_entity = event_payload.get("payment", {}).get("entity", {})
+        payment_entity = event_payload.get(
+            "payment",
+            {},
+        ).get(
+            "entity",
+            {},
+        )
 
-        order_entity = event_payload.get("order", {}).get("entity", {})
+        order_entity = event_payload.get(
+            "order",
+            {},
+        ).get(
+            "entity",
+            {},
+        )
 
         provider_payment_id = payment_entity.get(
             "id",
@@ -180,6 +193,33 @@ async def razorpay_webhook(
                 local_order.provider_payment_id = provider_payment_id
 
             local_order.paid_at = datetime.now(UTC)
+
+            draft = db.scalar(
+                select(Draft).where(
+                    Draft.id == local_order.draft_id,
+                )
+            )
+
+            if draft is None:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="The draft associated with this order was not found.",
+                )
+
+            gift_service = GiftService(db)
+
+            try:
+                gift_service.create_gift_for_paid_order(
+                    order=local_order,
+                    draft=draft,
+                )
+            except GiftCreationError as exc:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=str(exc),
+                ) from exc
 
     try:
         db.commit()

@@ -7,6 +7,7 @@ from app.api.routes.admin_catalog import (
 from app.api.routes.catalog import router as catalog_router
 from app.api.routes.checkout import router as checkout_router
 from app.api.routes.drafts import router as drafts_router
+from app.api.routes.gifts import router as gifts_router
 from app.api.routes.health import router as health_router
 from app.api.routes.payments import router as payments_router
 from app.api.routes.photos import router as photos_router
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     application.include_router(photos_router)
     application.include_router(checkout_router)
     application.include_router(payments_router)
+    application.include_router(gifts_router)
     return application
 
 

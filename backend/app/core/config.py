@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     razorpay_timeout_seconds: float = 10.0
     razorpay_webhook_secret: str = ""
 
+    gift_token_secret: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -98,7 +98,7 @@ def create_draft(
         httponly=True,
         secure=settings.draft_cookie_secure,
         samesite="lax",
-        path=f"/drafts/{draft.id}",
+        path="/",
     )
 
     return draft

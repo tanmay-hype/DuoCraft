@@ -1,10 +1,14 @@
 import hashlib
 import hmac
+import logging
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentProviderError(Exception):
@@ -46,19 +50,39 @@ class RazorpayService:
             "receipt": receipt,
         }
 
+        logger.info(
+            "Creating Razorpay order: amount=%s currency=%s receipt=%s",
+            amount,
+            currency,
+            receipt,
+        )
+
         try:
             response = self.client.post(
                 "/orders",
                 json=payload,
             )
         except httpx.HTTPError as exc:
+            logger.exception(
+                "Razorpay request failed before receiving a response.",
+            )
             raise PaymentProviderError(
                 "Unable to reach Razorpay.",
             ) from exc
 
         if response.is_error:
+            response_body = response.text[:2000]
+
+            logger.error(
+                "Razorpay order creation failed: "
+                "status=%s body=%s",
+                response.status_code,
+                response_body,
+            )
+
             raise PaymentProviderError(
-                "Razorpay rejected the order.",
+                "Razorpay rejected the order "
+                f"(HTTP {response.status_code}): {response_body}",
             )
 
         data = self._parse_response(response)
@@ -66,9 +90,18 @@ class RazorpayService:
         provider_order_id = data.get("id")
 
         if not isinstance(provider_order_id, str):
+            logger.error(
+                "Razorpay response did not contain an order ID: %s",
+                data,
+            )
             raise PaymentProviderError(
                 "Razorpay response did not contain an order ID.",
             )
+
+        logger.info(
+            "Razorpay order created successfully: provider_order_id=%s",
+            provider_order_id,
+        )
 
         return data
 
@@ -84,11 +117,23 @@ class RazorpayService:
                 f"/payments/{payment_id}",
             )
         except httpx.HTTPError as exc:
+            logger.exception(
+                "Razorpay payment retrieval failed.",
+            )
             raise PaymentProviderError(
                 "Unable to reach Razorpay.",
             ) from exc
 
         if response.is_error:
+            response_body = response.text[:2000]
+
+            logger.error(
+                "Razorpay payment retrieval failed: "
+                "status=%s body=%s",
+                response.status_code,
+                response_body,
+            )
+
             raise PaymentProviderError(
                 "Unable to retrieve payment from Razorpay.",
             )
@@ -144,6 +189,7 @@ class RazorpayService:
             raise PaymentProviderError(
                 "Razorpay key secret is not configured.",
             )
+
         if not settings.razorpay_webhook_secret:
             raise PaymentProviderError(
                 "Razorpay webhook secret is not configured.",
@@ -156,6 +202,10 @@ class RazorpayService:
         try:
             data = response.json()
         except ValueError as exc:
+            logger.error(
+                "Razorpay returned a non-JSON response: %s",
+                response.text[:2000],
+            )
             raise PaymentProviderError(
                 "Razorpay returned an invalid response.",
             ) from exc

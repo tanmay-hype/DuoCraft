@@ -177,6 +177,12 @@ def create_payment_order(
             detail="Order is not available for payment.",
         )
 
+    if order.total_amount < 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Razorpay orders must be at least 100 paise.",
+        )
+
     if order.payment_provider == "razorpay" and order.provider_order_id:
         return PaymentOrderResponse(
             order_id=order.id,
@@ -197,7 +203,7 @@ def create_payment_order(
         )
     except PaymentProviderError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
+            status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         ) from exc
     finally:

@@ -242,7 +242,9 @@ export function CheckoutPanel({
 
       const razorpay =
         new window.Razorpay({
-          key: paymentOrder.key_id,
+          key:
+            process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ??
+            paymentOrder.key_id,
           amount: paymentOrder.amount,
           currency: paymentOrder.currency,
           name: "DuoCraft",

@@ -7,12 +7,15 @@ import httpx
 
 from app.core.config import settings
 
-
 logger = logging.getLogger(__name__)
 
 
 class PaymentProviderError(Exception):
     """Raised when the payment provider cannot fulfill a request."""
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class PaymentSignatureError(Exception):
@@ -81,8 +84,11 @@ class RazorpayService:
             )
 
             raise PaymentProviderError(
-                "Razorpay rejected the order "
+                "Razorpay authentication failed."
+                if response.status_code == 401
+                else "Razorpay rejected the order "
                 f"(HTTP {response.status_code}): {response_body}",
+                status_code=401 if response.status_code == 401 else None,
             )
 
         data = self._parse_response(response)
@@ -188,11 +194,6 @@ class RazorpayService:
         if not settings.razorpay_key_secret:
             raise PaymentProviderError(
                 "Razorpay key secret is not configured.",
-            )
-
-        if not settings.razorpay_webhook_secret:
-            raise PaymentProviderError(
-                "Razorpay webhook secret is not configured.",
             )
 
     @staticmethod

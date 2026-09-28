@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.gift_security import (
     generate_gift_token,
     hash_gift_token,
@@ -16,6 +18,10 @@ class GiftCreationError(Exception):
 
 class GiftNotFoundError(Exception):
     """Raised when a public gift cannot be found."""
+
+
+class GiftExpiredError(Exception):
+    """Raised when a gift has expired."""
 
 
 @dataclass(frozen=True)
@@ -42,16 +48,30 @@ class GiftService:
         draft: Draft,
     ) -> CreatedGift:
         if order.status != "paid":
-            raise GiftCreationError("A gift can only be created for a paid order.")
+            raise GiftCreationError(
+                "A gift can only be created for a paid order.",
+            )
 
         if order.draft_id != draft.id:
-            raise GiftCreationError("The order does not belong to this draft.")
+            raise GiftCreationError(
+                "The order does not belong to this draft.",
+            )
 
         existing_gift = self.db.query(Gift).filter(Gift.order_id == order.id).one_or_none()
 
         if existing_gift is not None:
             if existing_gift.status != "active":
-                raise GiftCreationError("An inactive gift already exists for this order.")
+                raise GiftCreationError(
+                    "An inactive gift already exists for this order.",
+                )
+
+            if self._is_expired(existing_gift):
+                existing_gift.status = "expired"
+                self.db.commit()
+
+                raise GiftExpiredError(
+                    "The existing gift has expired.",
+                )
 
             return CreatedGift(
                 gift=existing_gift,
@@ -60,11 +80,17 @@ class GiftService:
                 ),
             )
 
+        now = datetime.now(UTC)
+
         gift = Gift(
             draft_id=draft.id,
             order_id=order.id,
             share_token_hash="",
             status="active",
+            expires_at=now
+            + timedelta(
+                days=settings.gift_lifetime_days,
+            ),
         )
 
         try:
@@ -100,23 +126,53 @@ class GiftService:
             self.db.query(Gift)
             .filter(
                 Gift.share_token_hash == token_hash,
-                Gift.status == "active",
             )
             .one_or_none()
         )
 
         if gift is None:
-            raise GiftNotFoundError("Gift not found.")
+            raise GiftNotFoundError(
+                "Gift not found.",
+            )
 
-        draft = self.db.query(Draft).filter(Draft.id == gift.draft_id).one_or_none()
+        if gift.status != "active":
+            raise GiftNotFoundError(
+                "Gift not found.",
+            )
+
+        if self._is_expired(gift):
+            gift.status = "expired"
+            self.db.commit()
+
+            raise GiftExpiredError(
+                "Gift has expired.",
+            )
+
+        draft = (
+            self.db.query(Draft)
+            .filter(
+                Draft.id == gift.draft_id,
+            )
+            .one_or_none()
+        )
 
         if draft is None:
-            raise GiftNotFoundError("Gift draft not found.")
+            raise GiftNotFoundError(
+                "Gift draft not found.",
+            )
 
-        product = self.db.query(Product).filter(Product.id == draft.product_id).one_or_none()
+        product = (
+            self.db.query(Product)
+            .filter(
+                Product.id == draft.product_id,
+            )
+            .one_or_none()
+        )
 
         if product is None:
-            raise GiftNotFoundError("Gift product not found.")
+            raise GiftNotFoundError(
+                "Gift product not found.",
+            )
 
         return PublicGiftData(
             gift=gift,
@@ -129,7 +185,7 @@ class GiftService:
         *,
         gift_id: UUID,
     ) -> Gift | None:
-        return (
+        gift = (
             self.db.query(Gift)
             .filter(
                 Gift.id == gift_id,
@@ -138,12 +194,46 @@ class GiftService:
             .one_or_none()
         )
 
+        if gift is None:
+            return None
+
+        if self._is_expired(gift):
+            gift.status = "expired"
+            self.db.commit()
+            return None
+
+        return gift
+
     def get_share_token(
         self,
         *,
         gift: Gift,
     ) -> str:
         if gift.status != "active":
-            raise GiftCreationError("Only active gifts have share tokens.")
+            raise GiftCreationError(
+                "Only active gifts have share tokens.",
+            )
+
+        if self._is_expired(gift):
+            gift.status = "expired"
+            self.db.commit()
+
+            raise GiftExpiredError(
+                "Gift has expired.",
+            )
 
         return generate_gift_token(gift.id)
+
+    @staticmethod
+    def _is_expired(gift: Gift) -> bool:
+        if gift.expires_at is None:
+            return False
+
+        expires_at = gift.expires_at
+
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(
+                tzinfo=UTC,
+            )
+
+        return expires_at <= datetime.now(UTC)

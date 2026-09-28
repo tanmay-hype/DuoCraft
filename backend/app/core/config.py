@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     razorpay_webhook_secret: str = ""
 
     gift_token_secret: str = ""
+    gift_lifetime_days: int = 365
 
 
 @lru_cache

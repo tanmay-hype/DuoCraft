@@ -77,8 +77,7 @@ class RazorpayService:
             response_body = response.text[:2000]
 
             logger.error(
-                "Razorpay order creation failed: "
-                "status=%s body=%s",
+                "Razorpay order creation failed: status=%s body=%s",
                 response.status_code,
                 response_body,
             )
@@ -86,8 +85,7 @@ class RazorpayService:
             raise PaymentProviderError(
                 "Razorpay authentication failed."
                 if response.status_code == 401
-                else "Razorpay rejected the order "
-                f"(HTTP {response.status_code}): {response_body}",
+                else f"Razorpay rejected the order (HTTP {response.status_code}): {response_body}",
                 status_code=401 if response.status_code == 401 else None,
             )
 
@@ -134,8 +132,7 @@ class RazorpayService:
             response_body = response.text[:2000]
 
             logger.error(
-                "Razorpay payment retrieval failed: "
-                "status=%s body=%s",
+                "Razorpay payment retrieval failed: status=%s body=%s",
                 response.status_code,
                 response_body,
             )

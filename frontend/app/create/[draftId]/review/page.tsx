@@ -446,13 +446,14 @@ function ReviewLayout({
                 </p>
               </div>
 
-              <div className="mt-6">
-                <CheckoutPanel 
-                  draftId={draft.id}
-                  productName={giftName}
-                /> 
-              </div>  
             </aside>
+          </div>
+
+          <div className="mt-8">
+            <CheckoutPanel
+              draftId={draft.id}
+              productName={giftName}
+            />
           </div>
         </div>
       </div>

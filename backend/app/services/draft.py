@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.draft_security import hash_owner_token
-from app.models import Draft, Product
+from app.models import Draft, PhotoAsset, Product
 from app.schemas import DraftUpdate
 from app.services.personalization import (
+    PersonalizationValidationError,
     validate_personalization,
     validate_theme,
 )
@@ -82,6 +83,36 @@ class DraftService:
                     draft.template_key,
                     personalization,
                 )
+
+                if draft.template_key == "photo_puzzle":
+                    photo_asset_id = personalization.get(
+                        "photo_asset_id",
+                    )
+
+                    if photo_asset_id is not None:
+                        try:
+                            selected_photo_id = UUID(
+                                photo_asset_id,
+                            )
+                        except ValueError as exc:
+                            raise PersonalizationValidationError(
+                                "The selected photo is not available for this draft.",
+                            ) from exc
+
+                        photo = (
+                            self.db.query(PhotoAsset)
+                            .filter(
+                                PhotoAsset.id == selected_photo_id,
+                                PhotoAsset.draft_id == draft.id,
+                                PhotoAsset.status == "uploaded",
+                            )
+                            .one_or_none()
+                        )
+
+                        if photo is None:
+                            raise PersonalizationValidationError(
+                                "The selected photo is not available for this draft.",
+                            )
 
         if "theme_key" in updates:
             updates["theme_key"] = validate_theme(

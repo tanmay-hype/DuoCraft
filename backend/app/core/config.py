@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://gift_user:gift_password@postgres:5432/duocraft"
 
     redis_url: str = "redis://redis:6379/0"
+    public_gift_rate_limit: int = 60
+    public_gift_rate_window_seconds: int = 60
 
     admin_api_key: str = ""
 

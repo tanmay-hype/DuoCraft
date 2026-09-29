@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.rate_limit import enforce_public_gift_rate_limit
 from app.models import PhotoAsset
 from app.schemas.gift import (
     PublicGiftPhoto,
@@ -35,6 +36,7 @@ def get_public_gift(
         Path(min_length=32, max_length=128),
     ],
     db: Annotated[Session, Depends(get_db)],
+    _: None = Depends(enforce_public_gift_rate_limit),
 ) -> PublicGiftResponse:
     gift_service = GiftService(db)
 

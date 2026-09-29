@@ -11,6 +11,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { updateDraft } from "@/lib/api/drafts";
+import {
+  generateLoveLetter,
+  type LoveLetterLanguage,
+  type LoveLetterLength,
+  type LoveLetterTone,
+} from "@/lib/api/love-letter";
 import type { Draft } from "@/types/draft";
 
 export type TextTemplateKey =
@@ -239,6 +245,17 @@ export function TextGiftBuilder({
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
+  const [relationship, setRelationship] = useState("");
+  const [memories, setMemories] = useState("");
+  const [tone, setTone] = useState<LoveLetterTone>("tender");
+  const [language, setLanguage] =
+    useState<LoveLetterLanguage>("english");
+  const [letterLength, setLetterLength] =
+    useState<LoveLetterLength>("medium");
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState("");
+  const [remainingRequests, setRemainingRequests] =
+    useState<number | null>(null);
   const firstRender = useRef(true);
   const saveRequest = useRef(0);
   const complete = isComplete(personalization);
@@ -284,6 +301,47 @@ export function TextGiftBuilder({
     setSaveState("idle");
   }
 
+  async function generateLetter() {
+    if (
+      templateKey !== "love_letter" ||
+      !relationship.trim() ||
+      !memories.trim() ||
+      generating
+    ) {
+      return;
+    }
+
+    setGenerating(true);
+    setGenerationError("");
+
+    try {
+      const generated = await generateLoveLetter(draft.id, {
+        recipient_name: personalization.recipient_name,
+        relationship: relationship.trim(),
+        memories: memories.trim(),
+        language,
+        tone,
+        length: letterLength,
+      });
+
+      setPersonalization((current) => ({
+        ...current,
+        headline: generated.headline,
+        message: generated.message,
+      }));
+      setRemainingRequests(generated.remaining_requests);
+      setSaveState("idle");
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to generate your Love Letter.",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   const previewClass = theme.includes("midnight") || theme === "inside-jokes"
     ? "bg-ink text-paper"
     : theme.includes("rose") || theme.includes("garden")
@@ -299,6 +357,108 @@ export function TextGiftBuilder({
         </h1>
         <p className="mt-3 leading-7 text-ink-soft">{definition.description}</p>
 
+        {templateKey === "love_letter" ? (
+          <div className="mt-7 rounded-3xl border border-rose/20 bg-rose/5 p-5">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-1 size-5 shrink-0 text-rose" />
+              <div>
+                <h2 className="font-bold text-ink">Start with a few details</h2>
+                <p className="mt-1 text-sm leading-6 text-ink-soft">
+                  DuoCraft can draft a starting point. You can edit every word before checkout.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              <label className="grid gap-2">
+                <span className="text-sm font-bold text-ink">Your relationship</span>
+                <input
+                  value={relationship}
+                  onChange={(event) => setRelationship(event.target.value)}
+                  maxLength={80}
+                  placeholder="Partner, spouse, long-distance love..."
+                  className="rounded-2xl border border-line bg-paper px-4 py-3 text-ink outline-none transition placeholder:text-ink-muted focus:border-berry"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-bold text-ink">Memories and details</span>
+                <textarea
+                  value={memories}
+                  onChange={(event) => setMemories(event.target.value)}
+                  maxLength={1200}
+                  rows={4}
+                  placeholder="A place, a small habit, the moment you knew..."
+                  className="resize-y rounded-2xl border border-line bg-paper px-4 py-3 leading-7 text-ink outline-none transition placeholder:text-ink-muted focus:border-berry"
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-ink">Tone</span>
+                  <select
+                    value={tone}
+                    onChange={(event) => setTone(event.target.value as LoveLetterTone)}
+                    className="rounded-2xl border border-line bg-paper px-4 py-3 text-ink outline-none focus:border-berry"
+                  >
+                    <option value="tender">Tender</option>
+                    <option value="playful">Playful</option>
+                    <option value="poetic">Poetic</option>
+                    <option value="sincere">Sincere</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-ink">Language</span>
+                  <select
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value as LoveLetterLanguage)}
+                    className="rounded-2xl border border-line bg-paper px-4 py-3 text-ink outline-none focus:border-berry"
+                  >
+                    <option value="english">English</option>
+                    <option value="hindi">Hindi</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-ink">Length</span>
+                  <select
+                    value={letterLength}
+                    onChange={(event) => setLetterLength(event.target.value as LoveLetterLength)}
+                    className="rounded-2xl border border-line bg-paper px-4 py-3 text-ink outline-none focus:border-berry"
+                  >
+                    <option value="short">400+ words</option>
+                    <option value="medium">550+ words</option>
+                    <option value="long">700+ words</option>
+                  </select>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void generateLetter()}
+                disabled={generating || !relationship.trim() || !memories.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-berry px-5 py-3 text-sm font-bold text-paper transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Sparkles className="size-4" />
+                {generating ? "Writing a starting point..." : "Generate a starting point"}
+              </button>
+
+              {remainingRequests !== null ? (
+                <p className="text-xs text-ink-muted">
+                  {remainingRequests} generation{remainingRequests === 1 ? "" : "s"} remaining this hour.
+                </p>
+              ) : null}
+
+              {generationError ? (
+                <p className="rounded-2xl border border-berry/20 bg-paper px-4 py-3 text-sm leading-6 text-berry" role="alert">
+                  {generationError}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-8 grid gap-6">
           <Field label={definition.recipientLabel} value={personalization.recipient_name} placeholder={definition.recipientPlaceholder} onChange={(value) => updateField("recipient_name", value)} />
           <Field label={definition.senderLabel} value={personalization.sender_name} placeholder={definition.senderPlaceholder} onChange={(value) => updateField("sender_name", value)} />
@@ -306,12 +466,12 @@ export function TextGiftBuilder({
           <label className="grid gap-2">
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm font-bold text-ink">{definition.messageLabel}</span>
-              <span className="text-xs text-ink-muted">{personalization.message.length}/1000</span>
+              <span className="text-xs text-ink-muted">{personalization.message.length}/8000</span>
             </div>
             <textarea
               value={personalization.message}
               onChange={(event) => updateField("message", event.target.value)}
-              maxLength={1000}
+              maxLength={templateKey === "love_letter" ? 8000 : 1000}
               rows={7}
               placeholder={definition.messagePlaceholder}
               className="resize-y rounded-2xl border border-line bg-cream px-4 py-3.5 leading-7 text-ink outline-none transition placeholder:text-ink-muted focus:border-berry"

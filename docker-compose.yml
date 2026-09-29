@@ -41,6 +41,16 @@ services:
       timeout: 5s
       retries: 5
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+
+    volumes:
+      - ollama_data:/root/.ollama
+
   backend:
     build:
       context: ./backend
@@ -57,6 +67,12 @@ services:
       DATABASE_URL: postgresql+psycopg://gift_user:gift_password@postgres:5432/duocraft
 
       REDIS_URL: redis://redis:6379/0
+
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
 
       S3_BUCKET_NAME: duocraft-dev
       S3_REGION: ap-south-1
@@ -88,6 +104,9 @@ services:
         condition: service_healthy
 
       minio:
+        condition: service_started
+
+      ollama:
         condition: service_started
 
   worker:
@@ -157,3 +176,4 @@ volumes:
   redis_data:
   frontend_node_modules:
   minio_data:
+  ollama_data:

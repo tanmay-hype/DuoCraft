@@ -1,4 +1,5 @@
 from functools import lru_cache
+from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 from redis import Redis
@@ -42,3 +43,35 @@ def enforce_public_gift_rate_limit(request: Request) -> None:
                 ),
             },
         )
+
+
+def enforce_love_letter_rate_limit(draft_id: UUID) -> int:
+    key = f"duocraft:rate-limit:love-letter:{draft_id}"
+
+    try:
+        redis_client = get_redis_client()
+        request_count = redis_client.incr(key)
+
+        if request_count == 1:
+            redis_client.expire(
+                key,
+                settings.llm_rate_limit_window_seconds,
+            )
+    except RedisError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Love Letter generation is temporarily unavailable.",
+        ) from exc
+
+    if request_count > settings.llm_max_requests_per_window:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="You have reached the Love Letter generation limit. Please try again later.",
+            headers={
+                "Retry-After": str(
+                    settings.llm_rate_limit_window_seconds,
+                ),
+            },
+        )
+
+    return settings.llm_max_requests_per_window - request_count

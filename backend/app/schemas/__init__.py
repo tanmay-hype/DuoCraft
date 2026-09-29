@@ -18,6 +18,10 @@ from app.schemas.draft import (
     DraftResponse,
     DraftUpdate,
 )
+from app.schemas.love_letter import (
+    LoveLetterGenerateRequest,
+    LoveLetterGenerateResponse,
+)
 
 __all__ = [
     "DraftResponse",
@@ -34,4 +38,6 @@ __all__ = [
     "CheckoutOrderResponse",
     "CheckoutPricingSnapshot",
     "CheckoutProductSnapshot",
+    "LoveLetterGenerateRequest",
+    "LoveLetterGenerateResponse",
 ]

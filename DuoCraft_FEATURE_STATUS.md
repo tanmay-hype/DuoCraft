@@ -337,19 +337,25 @@ and public rendering.
 
 | Feature | Status |
 |---|---|
-| LLM integration architecture | ⬜ |
-| Love-letter writer UI | ⬜ |
-| Prompt construction | ⬜ |
-| Tone selection | ⬜ |
-| Context inputs | ⬜ |
-| Draft generation | ⬜ |
-| Regeneration | ⬜ |
-| Editing generated letter | ⬜ |
-| Token/cost controls | ⬜ |
-| Abuse/safety controls | ⬜ |
-| Rate limiting | ⬜ |
+| LLM integration architecture | ✅ |
+| Love-letter writer UI | ✅ |
+| Prompt construction | ✅ |
+| Tone selection | ✅ |
+| Context inputs | ✅ |
+| Draft generation | ✅ |
+| Regeneration | ✅ |
+| Editing generated letter | ✅ |
+| Token/cost controls | ✅ |
+| Abuse/safety controls | ✅ |
+| Rate limiting | ✅ |
 
 The LLM is intended to be isolated to the Love Letter writer.
+Love Letter generation uses Gemini as the primary provider with Ollama as the
+fallback, is disabled by default until credentials are configured, supports
+English and Hindi, requests an original old-school romantic literary voice
+without reproducing copyrighted novel passages, requires at least 400 words,
+limits requests per draft, caps context and output size, rejects minor-related
+context, and writes generated content into the existing editable draft fields.
 
 ## 14. Analytics
 
@@ -509,15 +515,15 @@ The real Razorpay → webhook → paid order → gift creation → frontend conf
 19. ✅ Mother's Day
 
 ### Phase 8 — LLM
-⬜ Next
+✅ Complete
 
-20. Love Letter writer
-21. Prompt system
-22. Regeneration/editing
-23. Cost/rate controls
+20. ✅ Love Letter writer
+21. ✅ Prompt system
+22. ✅ Regeneration/editing
+23. ✅ Cost/rate controls
 
 ### Phase 9 — Production Hardening
-⬜
+⬜ Next
 
 24. Rate limiting
 25. Security headers

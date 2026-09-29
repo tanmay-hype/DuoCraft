@@ -16,6 +16,8 @@ TEMPLATES = (
     "mothers_day",
 )
 
+LONG_MESSAGE = " ".join(["love"] * 400)
+
 
 @pytest.mark.parametrize("template_key", TEMPLATES)
 def test_remaining_templates_validate_strict_text_personalization(
@@ -27,7 +29,11 @@ def test_remaining_templates_validate_strict_text_personalization(
             "recipient_name": "Alex",
             "sender_name": "Sam",
             "headline": "A little something",
-            "message": "This is a complete message.",
+            "message": (
+                LONG_MESSAGE
+                if template_key == "love_letter"
+                else "This is a complete message."
+            ),
         },
     )
 
@@ -45,7 +51,11 @@ def test_remaining_templates_reject_unknown_fields(
                 "recipient_name": "Alex",
                 "sender_name": "Sam",
                 "headline": "A little something",
-                "message": "This is a complete message.",
+                "message": (
+                    LONG_MESSAGE
+                    if template_key == "love_letter"
+                    else "This is a complete message."
+                ),
                 "unexpected": "field",
             },
         )

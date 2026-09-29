@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     twilio_whatsapp_from: str | None = None
     public_gift_rate_limit: int = 60
     public_gift_rate_window_seconds: int = 60
+    llm_enabled: bool = False
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    ollama_base_url: str = "http://ollama:11434"
+    ollama_model: str = "llama3.1:8b"
+    llm_timeout_seconds: float = 30.0
+    llm_max_requests_per_window: int = 5
+    llm_rate_limit_window_seconds: int = 3600
+    llm_max_context_characters: int = 1200
+    llm_max_output_characters: int = 8000
 
     admin_api_key: str = ""
 

@@ -225,6 +225,20 @@ function isComplete(personalization: TextGiftPersonalization) {
   );
 }
 
+function isReadyToSave(
+  personalization: TextGiftPersonalization,
+  templateKey: TextTemplateKey,
+) {
+  if (!isComplete(personalization)) {
+    return false;
+  }
+
+  return (
+    templateKey !== "love_letter" ||
+    personalization.message.trim().split(/\s+/).length >= 400
+  );
+}
+
 export function TextGiftBuilder({
   draft,
   templateKey,
@@ -258,7 +272,7 @@ export function TextGiftBuilder({
     useState<number | null>(null);
   const firstRender = useRef(true);
   const saveRequest = useRef(0);
-  const complete = isComplete(personalization);
+  const complete = isReadyToSave(personalization, templateKey);
 
   useEffect(() => {
     if (firstRender.current) {

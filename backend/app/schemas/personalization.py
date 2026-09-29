@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BirthdayPersonalization(BaseModel):
@@ -91,15 +91,7 @@ class LoveLetterPersonalization(BaseModel):
     recipient_name: str = Field(min_length=1, max_length=60)
     sender_name: str = Field(min_length=1, max_length=60)
     headline: str = Field(min_length=1, max_length=100)
-    message: str = Field(min_length=400, max_length=8000)
-
-    @field_validator("message")
-    @classmethod
-    def require_long_letter(cls, value: str) -> str:
-        if len(value.split()) < 400:
-            raise ValueError("Love Letters must contain at least 400 words.")
-
-        return value
+    message: str = Field(min_length=1, max_length=8000)
 
 
 class ScrapbookPersonalization(BirthdayPersonalization):

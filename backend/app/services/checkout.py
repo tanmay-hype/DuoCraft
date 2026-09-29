@@ -19,6 +19,14 @@ class CheckoutService:
         addon_ids: list[int],
         customer_email: str | None,
     ) -> Order:
+        if draft.template_key == "love_letter":
+            message = str((draft.personalization or {}).get("message", ""))
+
+            if len(message.split()) < 400:
+                raise CheckoutValidationError(
+                    "Love Letters must contain at least 400 words before checkout.",
+                )
+
         product = self.db.get(Product, draft.product_id)
 
         if product is None or not product.is_active:

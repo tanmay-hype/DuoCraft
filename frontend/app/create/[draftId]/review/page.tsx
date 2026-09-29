@@ -88,12 +88,19 @@ function getPhotoPuzzlePersonalization(
 
 function isTextPersonalizationComplete(
   personalization: TextReviewPersonalization,
+  templateKey: string,
 ): boolean {
-  return (
+  const baseComplete = (
     personalization.recipient_name.trim().length > 0 &&
     personalization.sender_name.trim().length > 0 &&
     personalization.headline.trim().length > 0 &&
     personalization.message.trim().length > 0
+  );
+
+  return (
+    baseComplete &&
+    (templateKey !== "love_letter" ||
+      personalization.message.trim().split(/\s+/).length >= 400)
   );
 }
 
@@ -313,7 +320,10 @@ export default function ReviewGiftPage() {
   const personalization = getTextPersonalization(draft);
 
   const complete =
-    isTextPersonalizationComplete(personalization);
+    isTextPersonalizationComplete(
+      personalization,
+      draft.template_key,
+    );
 
   if (!complete) {
     return (
@@ -322,7 +332,11 @@ export default function ReviewGiftPage() {
           <StatusCard
             script="one little thing"
             title="Your gift needs a few more words."
-            description="Finish all the required fields before reviewing your gift."
+            description={
+              draft.template_key === "love_letter"
+                ? "Finish the letter and make sure it contains at least 400 words before reviewing your gift."
+                : "Finish all the required fields before reviewing your gift."
+            }
             draftId={draft.id}
             actionLabel="Finish personalizing"
           />

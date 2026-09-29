@@ -9,6 +9,7 @@ from redis.exceptions import RedisError
 from app.core import rate_limit
 from app.core.config import settings
 from app.schemas.love_letter import LoveLetterGenerateRequest
+from app.services.personalization import validate_personalization
 from app.services.love_letter import (
     LoveLetterGenerationError,
     LoveLetterSafetyError,
@@ -74,6 +75,20 @@ def test_love_letter_generation_rejects_minor_context() -> None:
 
     with pytest.raises(LoveLetterSafetyError):
         generate_love_letter(request)
+
+
+def test_love_letter_draft_can_be_saved_before_it_reaches_400_words() -> None:
+    validated = validate_personalization(
+        "love_letter",
+        {
+            "recipient_name": "Alex",
+            "sender_name": "Sam",
+            "headline": "A beginning",
+            "message": "I am still gathering the words.",
+        },
+    )
+
+    assert validated["message"] == "I am still gathering the words."
 
 
 def test_love_letter_generation_parses_provider_json(
@@ -170,6 +185,43 @@ def test_love_letter_generation_falls_back_to_ollama(
     assert calls[1].endswith("/api/chat")
     assert generated.provider == "ollama"
     assert generated.model == settings.ollama_model
+
+
+def test_gemini_credit_error_is_reported_without_ollama_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    def fake_post(url: str, **kwargs: object) -> httpx.Response:
+        calls.append(url)
+        return httpx.Response(
+            402,
+            json={
+                "error": {
+                    "message": "Your prepayment credits are depleted.",
+                },
+            },
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr("app.services.love_letter.httpx.post", fake_post)
+    original_enabled = settings.llm_enabled
+    original_key = settings.gemini_api_key
+
+    try:
+        settings.llm_enabled = True
+        settings.gemini_api_key = "test-key"
+
+        with pytest.raises(
+            LoveLetterGenerationError,
+            match="no remaining prepaid credits",
+        ):
+            generate_love_letter(make_request())
+    finally:
+        settings.llm_enabled = original_enabled
+        settings.gemini_api_key = original_key
+
+    assert len(calls) == 1
 
 
 def test_love_letter_generation_is_disabled_without_configuration() -> None:

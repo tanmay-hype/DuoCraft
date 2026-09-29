@@ -8,8 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import Draft, Order, PaymentEvent
+from app.models import Draft, Order, PaymentEvent, Product
 from app.services.gift import GiftCreationError, GiftService
+from app.services.notifications import (
+    NotificationService,
+    publish_notification,
+)
 from app.services.payment import RazorpayService
 
 router = APIRouter(
@@ -120,6 +124,7 @@ async def razorpay_webhook(
     )
 
     local_order = None
+    pending_notification_id = None
 
     if provider_order_id:
         local_order = db.scalar(
@@ -210,7 +215,7 @@ async def razorpay_webhook(
             gift_service = GiftService(db)
 
             try:
-                gift_service.create_gift_for_paid_order(
+                created_gift = gift_service.create_gift_for_paid_order(
                     order=local_order,
                     draft=draft,
                 )
@@ -221,10 +226,28 @@ async def razorpay_webhook(
                     detail=str(exc),
                 ) from exc
 
+            product = db.get(Product, draft.product_id)
+
+            if product is not None:
+                notification = NotificationService(
+                    db,
+                ).prepare_gift_created(
+                    gift=created_gift.gift,
+                    draft=draft,
+                    order=local_order,
+                    product=product,
+                )
+
+                if notification is not None:
+                    pending_notification_id = notification.id
+
     try:
         db.commit()
     except Exception:
         db.rollback()
         raise
+
+    if pending_notification_id is not None:
+        publish_notification(pending_notification_id)
 
     return {"status": "ok"}

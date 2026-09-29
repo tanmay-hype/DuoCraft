@@ -90,6 +90,32 @@ services:
       minio:
         condition: service_started
 
+  worker:
+    build:
+      context: ./backend
+
+    restart: unless-stopped
+
+    command:
+      [
+        "celery",
+        "-A",
+        "app.worker.celery_app",
+        "worker",
+        "--loglevel=INFO",
+        "--queues=duocraft.notifications",
+      ]
+
+    volumes:
+      - ./backend:/app
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

@@ -294,18 +294,24 @@ Current catalog:
 
 | Feature | Status |
 |---|---|
-| Notification model/log | ⬜ |
-| Redis task queue | 🟡 |
-| Celery worker | ⬜ |
-| Email provider | ⬜ |
-| Transactional email | ⬜ |
-| Gift-created email | ⬜ |
-| Gift-link email | ⬜ |
-| Email retries | ⬜ |
-| Notification idempotency | ⬜ |
-| WhatsApp integration | ⬜ |
-| WhatsApp gift delivery | ⬜ |
-| Delivery status tracking | ⬜ |
+| Notification model/log | ✅ |
+| Redis task queue | ✅ |
+| Celery worker | ✅ |
+| Email provider | ✅ |
+| Transactional email | ✅ |
+| Gift-created email | ✅ |
+| Gift-link email | ✅ |
+| Email retries | ✅ |
+| Notification idempotency | ✅ |
+| WhatsApp integration | 🟡 |
+| WhatsApp gift delivery | 🟡 |
+| Delivery status tracking | 🟡 |
+
+Phase 6 email delivery is implemented through a durable notification record,
+Redis/Celery queue, configurable console or SMTP provider, bounded retries,
+and deduplication tied to the created gift. WhatsApp has a provider adapter but
+remains partial until checkout captures an opted-in phone number and provider
+delivery callbacks are connected.
 
 ## 12. Remaining Gift Templates
 
@@ -476,15 +482,15 @@ The real Razorpay → webhook → paid order → gift creation → frontend conf
 4. Public gift rate limiting
 
 ### Phase 6 — Delivery Infrastructure
-⬜ Next
+🟡 In progress
 
-6. Celery
-7. Redis task queue
-8. Notification model/log
-9. Email provider
-10. Gift delivery email
-11. Notification retries/idempotency
-12. WhatsApp integration
+6. ✅ Celery worker
+7. ✅ Redis task queue
+8. ✅ Notification model/log
+9. ✅ Email provider
+10. ✅ Gift delivery email
+11. ✅ Notification retries/idempotency
+12. 🟡 WhatsApp integration and delivery callbacks
 
 ### Phase 7 — Complete Gift Templates
 ⬜

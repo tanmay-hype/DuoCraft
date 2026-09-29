@@ -13,6 +13,19 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://gift_user:gift_password@postgres:5432/duocraft"
 
     redis_url: str = "redis://redis:6379/0"
+    notification_queue_name: str = "duocraft.notifications"
+    notification_max_retries: int = 5
+    notification_retry_delay_seconds: int = 60
+    notification_email_backend: str = "console"
+    notification_from_email: str = "hello@duocraft.local"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_whatsapp_from: str | None = None
     public_gift_rate_limit: int = 60
     public_gift_rate_window_seconds: int = 60
 

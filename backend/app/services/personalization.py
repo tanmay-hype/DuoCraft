@@ -3,8 +3,15 @@ from typing import Any
 from pydantic import ValidationError
 
 from app.schemas.personalization import (
+    AnniversaryPersonalization,
+    ApologyPersonalization,
     BirthdayPersonalization,
+    FriendshipPersonalization,
+    LoveLetterPersonalization,
+    MothersDayPersonalization,
     PhotoPuzzlePersonalization,
+    ProposalPersonalization,
+    ScrapbookPersonalization,
     ThankYouPersonalization,
 )
 
@@ -26,9 +33,70 @@ PHOTO_PUZZLE_THEMES = {
     "playful-pieces",
 }
 
+PROPOSAL_THEMES = {
+    "candlelight-question",
+    "bold-question",
+    "quiet-moment",
+}
+
+APOLOGY_THEMES = {
+    "soft-reset",
+    "honest-heart",
+    "fresh-start",
+}
+
+ANNIVERSARY_THEMES = {
+    "golden-chapters",
+    "rose-years",
+    "midnight-us",
+}
+
+LOVE_LETTER_THEMES = {
+    "ink-and-paper",
+    "late-night-letter",
+    "rose-envelope",
+}
+
+SCRAPBOOK_THEMES = {
+    "paper-memories",
+    "polaroid-days",
+    "keepsake-box",
+}
+
+FRIENDSHIP_THEMES = {
+    "sunny-chaos",
+    "inside-jokes",
+    "golden-hour",
+}
+
+MOTHERS_DAY_THEMES = {
+    "garden-love",
+    "soft-heirloom",
+    "warm-kitchen",
+}
+
 DEFAULT_BIRTHDAY_THEME = "warm-confetti"
 DEFAULT_THANK_YOU_THEME = "pressed-flowers"
 DEFAULT_PHOTO_PUZZLE_THEME = "classic-pieces"
+DEFAULT_TEMPLATE_THEMES = {
+    "proposal": "candlelight-question",
+    "apology": "soft-reset",
+    "anniversary": "golden-chapters",
+    "love_letter": "ink-and-paper",
+    "scrapbook": "paper-memories",
+    "friendship": "sunny-chaos",
+    "mothers_day": "garden-love",
+}
+
+TEMPLATE_THEMES = {
+    "proposal": PROPOSAL_THEMES,
+    "apology": APOLOGY_THEMES,
+    "anniversary": ANNIVERSARY_THEMES,
+    "love_letter": LOVE_LETTER_THEMES,
+    "scrapbook": SCRAPBOOK_THEMES,
+    "friendship": FRIENDSHIP_THEMES,
+    "mothers_day": MOTHERS_DAY_THEMES,
+}
 
 
 class PersonalizationValidationError(ValueError):
@@ -54,6 +122,22 @@ def validate_personalization(
 
         if template_key == "photo_puzzle":
             validated = PhotoPuzzlePersonalization.model_validate(
+                personalization,
+            )
+            return validated.model_dump()
+
+        text_personalization = {
+            "proposal": ProposalPersonalization,
+            "apology": ApologyPersonalization,
+            "anniversary": AnniversaryPersonalization,
+            "love_letter": LoveLetterPersonalization,
+            "scrapbook": ScrapbookPersonalization,
+            "friendship": FriendshipPersonalization,
+            "mothers_day": MothersDayPersonalization,
+        }.get(template_key)
+
+        if text_personalization is not None:
+            validated = text_personalization.model_validate(
                 personalization,
             )
             return validated.model_dump()
@@ -101,6 +185,17 @@ def validate_theme(
         if theme_key not in PHOTO_PUZZLE_THEMES:
             raise PersonalizationValidationError(
                 "Invalid photo puzzle theme.",
+            )
+
+        return theme_key
+
+    if template_key in TEMPLATE_THEMES:
+        if theme_key is None:
+            return DEFAULT_TEMPLATE_THEMES[template_key]
+
+        if theme_key not in TEMPLATE_THEMES[template_key]:
+            raise PersonalizationValidationError(
+                f"Invalid {template_key} theme.",
             )
 
         return theme_key

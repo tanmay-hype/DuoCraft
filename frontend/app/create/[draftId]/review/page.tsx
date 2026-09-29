@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Check,
   Flower2,
+  Heart,
   ImageIcon,
   LockKeyhole,
   Puzzle,
@@ -14,6 +15,10 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckoutPanel } from "@/components/checkout/checkout-panel";
 import { PhotoPuzzleBoard } from "@/components/gifts/photo-puzzle/photo-puzzle-board";
+import {
+  TEXT_TEMPLATE_DEFINITIONS,
+  type TextTemplateKey,
+} from "@/components/gifts/text-gift/text-gift-builder";
 import { getDraft } from "@/lib/api/drafts";
 import {
   getDraftPhotos,
@@ -243,7 +248,8 @@ export default function ReviewGiftPage() {
   const supportedTemplate =
     draft.template_key === "birthday" ||
     draft.template_key === "thank_you" ||
-    draft.template_key === "photo_puzzle";
+    draft.template_key === "photo_puzzle" ||
+    draft.template_key in TEXT_TEMPLATE_DEFINITIONS;
 
   if (!supportedTemplate) {
     return (
@@ -252,7 +258,7 @@ export default function ReviewGiftPage() {
           <StatusCard
             script="almost ready"
             title="Review is not available for this gift yet."
-            description="Birthday, Thank You, and Photo Puzzle review are available while the remaining templates are being added."
+            description="This gift template does not have a review experience yet."
             draftId={draft.id}
             actionLabel="Back to editor"
           />
@@ -340,15 +346,34 @@ export default function ReviewGiftPage() {
     );
   }
 
+  if (draft.template_key === "thank_you") {
+    return (
+      <ReviewLayout
+        draft={draft}
+        giftName="Thank You Gift"
+        heading="Ready to send some gratitude?"
+        personalization={personalization}
+      >
+        <ThankYouReviewPreview
+          personalization={personalization}
+        />
+      </ReviewLayout>
+    );
+  }
+
+  const templateKey = draft.template_key as TextTemplateKey;
+  const definition = TEXT_TEMPLATE_DEFINITIONS[templateKey];
+
   return (
     <ReviewLayout
       draft={draft}
-      giftName="Thank You Gift"
-      heading="Ready to send some gratitude?"
+      giftName={definition.title}
+      heading={definition.previewEyebrow}
       personalization={personalization}
     >
-      <ThankYouReviewPreview
+      <TextGiftReviewPreview
         personalization={personalization}
+        templateKey={templateKey}
       />
     </ReviewLayout>
   );
@@ -555,6 +580,56 @@ function ThankYouReviewPreview({
           gratefully,
         </p>
 
+        <p className="script mt-1 text-3xl text-ink">
+          {personalization.sender_name}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function TextGiftReviewPreview({
+  personalization,
+  templateKey,
+}: {
+  personalization: TextReviewPersonalization;
+  templateKey: TextTemplateKey;
+}) {
+  const definition = TEXT_TEMPLATE_DEFINITIONS[templateKey];
+
+  return (
+    <section className="relative overflow-hidden rounded-[2.5rem_1.5rem_2.8rem_1.8rem] border border-line bg-paper p-8 shadow-[var(--shadow-paper)] sm:p-12">
+      <Heart
+        className="absolute right-8 top-8 size-12 text-rose opacity-30"
+        aria-hidden="true"
+      />
+
+      <p className="script text-3xl text-rose">
+        {definition.previewEyebrow}
+      </p>
+
+      <div className="py-16 text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+          especially for
+        </p>
+
+        <h2 className="serif mt-4 text-5xl font-semibold tracking-[-0.05em] text-ink">
+          {personalization.recipient_name}
+        </h2>
+
+        <Sparkles className="mx-auto mt-7 size-6 text-rose" />
+
+        <h3 className="serif mx-auto mt-7 max-w-lg text-3xl leading-tight text-ink">
+          {personalization.headline}
+        </h3>
+
+        <p className="mx-auto mt-7 max-w-lg whitespace-pre-wrap leading-8 text-ink-soft">
+          {personalization.message}
+        </p>
+      </div>
+
+      <div className="text-right">
+        <p className="text-sm text-ink-muted">with love,</p>
         <p className="script mt-1 text-3xl text-ink">
           {personalization.sender_name}
         </p>

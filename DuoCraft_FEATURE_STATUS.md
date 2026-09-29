@@ -158,13 +158,13 @@ Current catalog:
 
 | Gift | Status |
 |---|---|
-| Proposal | ⬜ |
-| Apology | ⬜ |
-| Anniversary | ⬜ |
-| Love Letter | ⬜ |
-| Scrapbook | ⬜ |
-| Friendship | ⬜ |
-| Mother's Day | ⬜ |
+| Proposal | ✅ |
+| Apology | ✅ |
+| Anniversary | ✅ |
+| Love Letter | ✅ |
+| Scrapbook | ✅ |
+| Friendship | ✅ |
+| Mother's Day | ✅ |
 
 ## 6. Photo Upload System
 
@@ -320,13 +320,18 @@ delivery callbacks are connected.
 | Birthday | ✅ |
 | Thank You | ✅ |
 | Photo Puzzle | ✅ |
-| Proposal | ⬜ |
-| Apology | ⬜ |
-| Anniversary | ⬜ |
-| Love Letter | ⬜ |
-| Scrapbook | ⬜ |
-| Friendship | ⬜ |
-| Mother's Day | ⬜ |
+| Proposal | ✅ |
+| Apology | ✅ |
+| Anniversary | ✅ |
+| Love Letter | ✅ |
+| Scrapbook | ✅ |
+| Friendship | ✅ |
+| Mother's Day | ✅ |
+
+Phase 7 uses one shared text-gift builder and review surface with template-specific
+copy, themes, and public presentation. All seven template keys have strict
+server-side personalization and theme validation, autosave, review, checkout,
+and public rendering.
 
 ## 13. LLM Love Letter Writer
 
@@ -493,18 +498,18 @@ The real Razorpay → webhook → paid order → gift creation → frontend conf
 12. 🟡 WhatsApp integration and delivery callbacks
 
 ### Phase 7 — Complete Gift Templates
-⬜
+✅ Complete
 
-13. Proposal
-14. Apology
-15. Anniversary
-16. Love Letter
-17. Scrapbook
-18. Friendship
-19. Mother's Day
+13. ✅ Proposal
+14. ✅ Apology
+15. ✅ Anniversary
+16. ✅ Love Letter
+17. ✅ Scrapbook
+18. ✅ Friendship
+19. ✅ Mother's Day
 
 ### Phase 8 — LLM
-⬜
+⬜ Next
 
 20. Love Letter writer
 21. Prompt system

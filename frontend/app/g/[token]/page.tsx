@@ -30,6 +30,40 @@ type PhotoPuzzlePersonalization = {
   photo_asset_id?: string | null;
 };
 
+const TEXT_GIFT_COPY: Record<
+  string,
+  { eyebrow: string; fallbackHeadline: string }
+> = {
+  proposal: {
+    eyebrow: "one question, a thousand feelings",
+    fallbackHeadline: "The question is waiting.",
+  },
+  apology: {
+    eyebrow: "a little room for honesty",
+    fallbackHeadline: "I am sorry.",
+  },
+  anniversary: {
+    eyebrow: "another year of us",
+    fallbackHeadline: "Still choosing you.",
+  },
+  love_letter: {
+    eyebrow: "dear you",
+    fallbackHeadline: "There is something I want you to know.",
+  },
+  scrapbook: {
+    eyebrow: "a few pages from our story",
+    fallbackHeadline: "The little book of us.",
+  },
+  friendship: {
+    eyebrow: "for my favorite kind of chaos",
+    fallbackHeadline: "Life is better with you in it.",
+  },
+  mothers_day: {
+    eyebrow: "for the woman who made a home of love",
+    fallbackHeadline: "Everything good in me began with you.",
+  },
+};
+
 function getTextValue(
   personalization: Record<string, unknown>,
   key: string,
@@ -225,6 +259,43 @@ function ThankYouGift({
   );
 }
 
+function TextGift({
+  personalization,
+  templateKey,
+  themeKey,
+}: {
+  personalization: Record<string, unknown>;
+  templateKey: string;
+  themeKey: string;
+}) {
+  const copy = TEXT_GIFT_COPY[templateKey];
+  const recipientName = getTextValue(personalization, "recipient_name") || "Someone special";
+  const senderName = getTextValue(personalization, "sender_name");
+  const headline = getTextValue(personalization, "headline") || copy.fallbackHeadline;
+  const message = getTextValue(personalization, "message") || "Your personalized words are waiting here.";
+  const themeClass = themeKey.includes("midnight") || themeKey === "inside-jokes"
+    ? "bg-ink text-paper"
+    : themeKey.includes("rose") || themeKey.includes("garden")
+      ? "bg-rose/10 text-ink"
+      : "bg-paper text-ink";
+
+  return (
+    <section className={`relative overflow-hidden rounded-[2.5rem_1.5rem_2.8rem_1.8rem] border border-line shadow-[var(--shadow-paper)] ${themeClass}`}>
+      <div className="relative px-7 py-12 sm:px-12 sm:py-16">
+        <div className="mx-auto max-w-2xl text-center">
+          <Heart className="mx-auto size-9 text-rose opacity-75" />
+          <p className="script mt-7 text-3xl text-rose sm:text-4xl">{copy.eyebrow}</p>
+          <p className="mt-8 text-xs font-bold uppercase tracking-[0.22em] opacity-60">especially for</p>
+          <h2 className="serif mt-4 text-5xl font-semibold tracking-[-0.05em] sm:text-7xl">{recipientName}</h2>
+          <h3 className="serif mx-auto mt-9 max-w-xl text-3xl font-medium leading-tight sm:text-4xl">{headline}</h3>
+          <p className="mx-auto mt-8 max-w-2xl whitespace-pre-wrap text-base leading-8 opacity-80 sm:text-lg">{message}</p>
+          <GiftFooter senderName={senderName} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PhotoPuzzleGift({
   personalization,
   photoUrl,
@@ -297,6 +368,30 @@ export default async function PublicGiftPage({
     personalization,
     "recipient_name",
   );
+
+  const textTemplate = TEXT_GIFT_COPY[templateKey];
+
+  if (textTemplate) {
+    return (
+      <main className="min-h-screen bg-cream px-5 py-10 text-ink sm:py-16">
+        <div className="mx-auto max-w-5xl">
+          <header className="mb-10 text-center">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-rose">
+              <Gift className="size-4" />
+              A DuoCraft gift
+            </div>
+            <h1 className="serif text-5xl font-semibold tracking-[-0.05em] sm:text-6xl">Made especially for you</h1>
+            {recipientName ? <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">A surprise for {recipientName}</p> : null}
+          </header>
+          <TextGift
+            personalization={personalization}
+            templateKey={templateKey}
+            themeKey={gift.theme_key}
+          />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-cream px-5 py-10 text-ink sm:py-16">

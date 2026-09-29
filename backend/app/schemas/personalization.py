@@ -68,3 +68,31 @@ class PhotoPuzzlePersonalization(BaseModel):
         max_length=500,
     )
     photo_asset_id: str | None = None
+
+
+class ProposalPersonalization(BirthdayPersonalization):
+    pass
+
+
+class ApologyPersonalization(BirthdayPersonalization):
+    pass
+
+
+class AnniversaryPersonalization(BirthdayPersonalization):
+    pass
+
+
+class LoveLetterPersonalization(BirthdayPersonalization):
+    pass
+
+
+class ScrapbookPersonalization(BirthdayPersonalization):
+    pass
+
+
+class FriendshipPersonalization(BirthdayPersonalization):
+    pass
+
+
+class MothersDayPersonalization(BirthdayPersonalization):
+    pass

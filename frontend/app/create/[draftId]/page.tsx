@@ -6,6 +6,10 @@ import { useEffect, useState } from "react";
 import { BirthdayBuilder } from "@/components/gifts/birthday/birthday-builder";
 import { PhotoPuzzleBuilder } from "@/components/gifts/photo-puzzle/photo-puzzle-builder";
 import { ThankYouBuilder } from "@/components/gifts/thank-you/thank-you-builder";
+import {
+  TextGiftBuilder,
+  type TextTemplateKey,
+} from "@/components/gifts/text-gift/text-gift-builder";
 import { getDraft } from "@/lib/api/drafts";
 import type { Draft } from "@/types/draft";
 
@@ -114,6 +118,35 @@ export default function CreateGiftPage() {
     );
   }
 
+  const textTemplateKeys: TextTemplateKey[] = [
+    "proposal",
+    "apology",
+    "anniversary",
+    "love_letter",
+    "scrapbook",
+    "friendship",
+    "mothers_day",
+  ];
+
+  if (
+    textTemplateKeys.includes(
+      draft.template_key as TextTemplateKey,
+    )
+  ) {
+    return (
+      <main className="min-h-screen bg-cream">
+        <div className="page-shell py-10 sm:py-14">
+          <TextGiftBuilder
+            draft={draft}
+            templateKey={
+              draft.template_key as TextTemplateKey
+            }
+          />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-cream">
       <div className="page-shell py-24">
@@ -127,9 +160,8 @@ export default function CreateGiftPage() {
           </h1>
 
           <p className="mt-4 leading-7 text-ink-soft">
-            Birthday, Thank You, and Photo Puzzle are available
-            now. The remaining DuoCraft templates are being
-            added.
+            This gift template is being prepared for its
+            personalization experience.
           </p>
         </div>
       </div>

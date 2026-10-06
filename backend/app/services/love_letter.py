@@ -17,6 +17,10 @@ class LoveLetterSafetyError(LoveLetterGenerationError):
     """Raised when generation context is unsafe for this feature."""
 
 
+class LoveLetterOutputError(LoveLetterGenerationError):
+    """Raised when the model output cannot be accepted."""
+
+
 class LoveLetterProviderError(LoveLetterGenerationError):
     def __init__(
         self,
@@ -42,14 +46,36 @@ UNSAFE_CONTEXT_PATTERN = re.compile(
 )
 
 
+DEVANAGARI_PATTERN = re.compile(r"[\u0900-\u097F]")
+
+
 def build_love_letter_prompt(
     request: LoveLetterGenerateRequest,
 ) -> str:
-    language_instruction = (
-        "Write entirely in Hindi using Devanagari script."
-        if request.language == "hindi"
-        else "Write entirely in English."
-    )
+    if request.language == "hindi":
+        language_instruction = (
+            "LANGUAGE REQUIREMENT — HIGHEST PRIORITY: "
+            "Write the final headline and the entire final message in Hindi "
+            "using Devanagari script. "
+            "The language of the user's input does NOT determine the output "
+            "language. The user may provide their memories, relationship, "
+            "and details entirely in English, Hindi, Hinglish, or mixed language. "
+            "You MUST understand those details, preserve their intended meaning, "
+            "and transform them into natural, emotionally expressive Hindi. "
+            "Do NOT return the user's English sentences unchanged. "
+            "Do NOT answer in English merely because the input is English. "
+            "Use English only when an unavoidable proper noun, name, title, "
+            "or commonly retained expression genuinely requires it. "
+            "Do not use Romanized Hindi when Devanagari Hindi is requested."
+        )
+    else:
+        language_instruction = (
+            "LANGUAGE REQUIREMENT — HIGHEST PRIORITY: "
+            "Write the final headline and the entire final message in English. "
+            "The user's input may be in English, Hindi, Hinglish, or mixed language. "
+            "Understand the meaning of the input and express the final letter "
+            "naturally in English."
+        )
 
     length_targets = {
         "short": "at least 400 words",
@@ -65,19 +91,33 @@ def build_love_letter_prompt(
         "literary-style allusions. Do not quote, reproduce, or closely imitate "
         "recognizable passages from copyrighted novels; invent fresh lines instead. "
         "\n\n"
-        "IMPORTANT WRITING RULES: "
-        "The user's memories and details are raw creative material, not polished "
+        "IMPORTANT INPUT HANDLING RULES: "
+        "The user's memories and details are RAW CREATIVE MATERIAL, not polished "
         "writing. They may contain spelling mistakes, grammar mistakes, missing "
         "punctuation, lowercase text, abbreviations, fragments, informal wording, "
-        "repeated words, or awkward sentences. Never reject or complain about "
-        "these writing mistakes. Never ask the user to correct them. "
-        "Silently understand the intended meaning and correct the grammar, spelling, "
-        "capitalization, punctuation, sentence structure, and wording while "
-        "writing the final letter. Preserve the user's intended meaning and "
-        "specific personal details. Do not invent major facts, promises, "
-        "experiences, or personal history that the user did not provide. "
+        "repeated words, awkward sentences, English words, Hindi words, Hinglish, "
+        "or a mixture of languages. "
         "\n\n"
-        "The opening headline must also be written entirely by you. "
+        "Never reject or complain about the user's writing quality. "
+        "Never ask the user to correct their grammar or punctuation. "
+        "Silently understand what the user means. "
+        "Correct grammar, spelling, capitalization, punctuation, sentence "
+        "structure, awkward phrasing, and language mixing while creating the "
+        "final letter. "
+        "\n\n"
+        "If the requested output language is Hindi, TRANSLATE and ADAPT the "
+        "meaning of English or mixed-language input into natural Hindi written "
+        "in Devanagari. Do not mechanically copy English sentences into the "
+        "output. Preserve names, specific memories, dates, places, and other "
+        "important personal details accurately. "
+        "\n\n"
+        "If the requested output language is English, naturally express the "
+        "meaning of Hindi, Hinglish, or mixed-language input in polished English. "
+        "\n\n"
+        "Do not invent major facts, promises, experiences, or personal history "
+        "that the user did not provide. "
+        "\n\n"
+        "The opening headline must be created entirely by you. "
         "Do not expect the user to provide an opening line. "
         "Create a natural, emotionally appropriate opening line based on the "
         "recipient, relationship, tone, and memories. "
@@ -88,10 +128,15 @@ def build_love_letter_prompt(
         "\n\n"
         f"{language_instruction} "
         f"The message must be {length_targets[request.length]}. "
-        "Return ONLY a JSON object. Do not use Markdown fences. "
+        "\n\n"
+        "OUTPUT FORMAT — HIGHEST PRIORITY: "
+        "Return ONLY one valid JSON object. "
+        "Do not use Markdown fences. "
         "Do not add commentary before or after the JSON. "
-        'The JSON must have exactly these two keys: "headline" and "message". '
-        "Both values must be strings.\n\n"
+        'The JSON must contain exactly these two keys: "headline" and "message". '
+        "Both values must be strings. "
+        "Escape quotation marks and other JSON-special characters correctly. "
+        "\n\n"
         f"Recipient: {request.recipient_name}\n"
         f"Relationship: {request.relationship}\n"
         f"Tone: {request.tone}\n"
@@ -116,20 +161,50 @@ def _validate_safety(
         )
 
 
+def _validate_output_language(
+    headline: str,
+    message: str,
+    language: str,
+) -> None:
+    if language != "hindi":
+        return
+
+    combined = f"{headline} {message}"
+
+    devanagari_characters = DEVANAGARI_PATTERN.findall(combined)
+
+    # A full Hindi love letter should contain substantial Devanagari output.
+    # This deliberately does not require 100% Devanagari because names,
+    # dates, initials, or occasional unavoidable terms may remain unchanged.
+    if len(devanagari_characters) < 50:
+        raise LoveLetterOutputError(
+            "Gemini did not return the requested Hindi output.",
+        )
+
+
 def _parse_json_content(
     content: str,
+    *,
+    language: str,
 ) -> tuple[str, str]:
     cleaned = content.strip()
 
     if not cleaned:
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "The language model returned an empty response.",
         )
 
-    # Gemini normally returns clean JSON because responseMimeType is set.
-    # It can still occasionally add Markdown fences, so remove them safely.
-    if cleaned.startswith("```"):
-        cleaned = re.sub(
+    parsed: Any = None
+
+    # First attempt: exact JSON.
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        parsed = None
+
+    # Second attempt: remove Markdown code fences.
+    if parsed is None and cleaned.startswith("```"):
+        unfenced = re.sub(
             r"^```(?:json)?\s*",
             "",
             cleaned,
@@ -137,39 +212,39 @@ def _parse_json_content(
             flags=re.IGNORECASE,
         )
 
-        cleaned = re.sub(
+        unfenced = re.sub(
             r"\s*```$",
             "",
-            cleaned,
+            unfenced,
             count=1,
         ).strip()
 
-    try:
-        parsed = json.loads(cleaned)
-    except json.JSONDecodeError:
-        # Recover an object if the provider added a short sentence around it.
+        try:
+            parsed = json.loads(unfenced)
+        except json.JSONDecodeError:
+            parsed = None
+
+    # Third attempt: recover the first JSON object from surrounding text.
+    if parsed is None:
         start = cleaned.find("{")
 
-        if start == -1:
-            raise LoveLetterGenerationError(
-                "The language model returned malformed letter data.",
-            )
+        if start != -1:
+            decoder = json.JSONDecoder()
 
-        json_candidate = cleaned[start:]
+            try:
+                parsed, _ = decoder.raw_decode(
+                    cleaned[start:],
+                )
+            except json.JSONDecodeError:
+                parsed = None
 
-        decoder = json.JSONDecoder()
-
-        try:
-            parsed, _ = decoder.raw_decode(
-                json_candidate,
-            )
-        except json.JSONDecodeError as exc:
-            raise LoveLetterGenerationError(
-                "The language model returned malformed letter data.",
-            ) from exc
+    if parsed is None:
+        raise LoveLetterOutputError(
+            "The language model returned malformed letter data.",
+        )
 
     if not isinstance(parsed, dict):
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "The language model returned invalid letter data.",
         )
 
@@ -180,7 +255,7 @@ def _parse_json_content(
         message,
         str,
     ):
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "The language model returned incomplete letter data.",
         )
 
@@ -188,24 +263,40 @@ def _parse_json_content(
     message = message.strip()
 
     if not headline or not message:
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "The language model returned an empty letter.",
         )
 
     word_count = len(message.split())
 
-    if word_count < 400:
-        raise LoveLetterGenerationError(
-            "The generated letter must contain at least 400 words.",
+    minimum_words = {
+        "short": 400,
+        "medium": 550,
+        "long": 700,
+    }
+
+    # The request language does not change the word-count requirement.
+    # Hindi words are still separated by whitespace for this validation.
+    required_words = minimum_words.get(language, 400)
+
+    if word_count < required_words:
+        raise LoveLetterOutputError(
+            "The generated letter is shorter than the requested length.",
         )
 
     if (
         len(headline) > 100
         or len(message) > settings.llm_max_output_characters
     ):
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "The generated letter exceeded the allowed length.",
         )
+
+    _validate_output_language(
+        headline,
+        message,
+        language,
+    )
 
     return headline, message
 
@@ -216,36 +307,57 @@ def _extract_gemini_content(
     candidates = data.get("candidates")
 
     if not isinstance(candidates, list) or not candidates:
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "Gemini returned no completion.",
         )
 
     candidate = candidates[0]
 
-    content = (
-        candidate.get("content", {})
-        if isinstance(candidate, dict)
-        else {}
-    )
-
-    parts = (
-        content.get("parts", [])
-        if isinstance(content, dict)
-        else []
-    )
-
-    text = (
-        parts[0].get("text")
-        if parts and isinstance(parts[0], dict)
-        else None
-    )
-
-    if not isinstance(text, str):
-        raise LoveLetterGenerationError(
+    if not isinstance(candidate, dict):
+        raise LoveLetterOutputError(
             "Gemini returned an invalid completion.",
         )
 
-    return text
+    finish_reason = candidate.get("finishReason")
+
+    if finish_reason == "MAX_TOKENS":
+        raise LoveLetterOutputError(
+            "Gemini stopped before completing the letter.",
+        )
+
+    content = candidate.get("content", {})
+
+    if not isinstance(content, dict):
+        raise LoveLetterOutputError(
+            "Gemini returned invalid completion content.",
+        )
+
+    parts = content.get("parts", [])
+
+    if not isinstance(parts, list) or not parts:
+        raise LoveLetterOutputError(
+            "Gemini returned an empty completion.",
+        )
+
+    # Gemini can return more than one text part. Joining all text parts
+    # is safer than assuming parts[0] contains the entire JSON document.
+    text_parts: list[str] = []
+
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+
+        text = part.get("text")
+
+        if isinstance(text, str) and text.strip():
+            text_parts.append(text)
+
+    if not text_parts:
+        raise LoveLetterOutputError(
+            "Gemini returned an invalid completion.",
+        )
+
+    return "".join(text_parts)
 
 
 def _extract_ollama_content(
@@ -260,7 +372,7 @@ def _extract_ollama_content(
     )
 
     if not isinstance(content, str):
-        raise LoveLetterGenerationError(
+        raise LoveLetterOutputError(
             "Ollama returned an invalid completion.",
         )
 
@@ -330,8 +442,9 @@ def _post_json(
     try:
         data = response.json()
     except ValueError as exc:
-        raise LoveLetterGenerationError(
+        raise LoveLetterProviderError(
             "The language model provider returned invalid data.",
+            retryable=True,
         ) from exc
 
     if not isinstance(data, dict):
@@ -345,11 +458,22 @@ def _post_json(
 
 def _generate_with_gemini(
     prompt: str,
+    *,
+    language: str,
 ) -> tuple[str, str]:
     if not settings.gemini_api_key:
         raise LoveLetterGenerationError(
             "Gemini is not configured.",
         )
+
+    # Hindi/Devanagari can consume more model tokens than the same
+    # semantic content in English. Give the model enough room so it
+    # does not truncate the JSON before the closing brace.
+    max_output_tokens = (
+        5000
+        if language == "hindi"
+        else 3500
+    )
 
     data = _post_json(
         f"{settings.gemini_base_url.rstrip('/')}/models/"
@@ -369,20 +493,40 @@ def _generate_with_gemini(
                 },
             ],
             "generationConfig": {
-                "temperature": 0.85,
-                "maxOutputTokens": 2200,
+                "temperature": 0.75,
+                "maxOutputTokens": max_output_tokens,
                 "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "headline": {
+                            "type": "STRING",
+                        },
+                        "message": {
+                            "type": "STRING",
+                        },
+                    },
+                    "required": [
+                        "headline",
+                        "message",
+                    ],
+                },
             },
         },
     )
 
     content = _extract_gemini_content(data)
 
-    return _parse_json_content(content)
+    return _parse_json_content(
+        content,
+        language=language,
+    )
 
 
 def _generate_with_ollama(
     prompt: str,
+    *,
+    language: str,
 ) -> tuple[str, str]:
     data = _post_json(
         f"{settings.ollama_base_url.rstrip('/')}/api/chat",
@@ -404,9 +548,13 @@ def _generate_with_ollama(
                         "romantic writing assistant. "
                         "User-provided memories are raw notes and may "
                         "contain grammar, spelling, capitalization, "
-                        "or punctuation mistakes. Never reject them "
-                        "for writing quality. Silently correct them "
-                        "while preserving their intended meaning. "
+                        "punctuation, English, Hindi, Hinglish, or mixed "
+                        "language. Never reject them for writing quality. "
+                        "Silently understand and correct them while "
+                        "preserving their intended meaning. "
+                        "If Hindi is requested, translate the meaning into "
+                        "natural Hindi using Devanagari script. "
+                        "If English is requested, produce natural English. "
                         "Return only the requested JSON."
                     ),
                 },
@@ -420,7 +568,42 @@ def _generate_with_ollama(
 
     content = _extract_ollama_content(data)
 
-    return _parse_json_content(content)
+    return _parse_json_content(
+        content,
+        language=language,
+    )
+
+
+def _retry_prompt(
+    prompt: str,
+    *,
+    language: str,
+) -> str:
+    if language == "hindi":
+        language_retry = (
+            "The previous generation did not satisfy the output requirements. "
+            "Generate the letter again. "
+            "The source information may be completely in English, but the FINAL "
+            "headline and FINAL message MUST be natural Hindi written in "
+            "Devanagari script. Translate and rewrite the meaning; do not copy "
+            "English sentences into the result. "
+            "Return one complete valid JSON object with headline and message. "
+            "Do not truncate the JSON."
+        )
+    else:
+        language_retry = (
+            "The previous generation did not satisfy the output requirements. "
+            "Generate the letter again in polished English. "
+            "Return one complete valid JSON object with headline and message. "
+            "Do not truncate the JSON."
+        )
+
+    return (
+        f"{prompt}\n\n"
+        "FINAL VALIDATION INSTRUCTION:\n"
+        f"{language_retry}\n"
+        "Make sure the message satisfies the requested minimum word count."
+    )
 
 
 def generate_love_letter(
@@ -439,6 +622,28 @@ def generate_love_letter(
     try:
         headline, message = _generate_with_gemini(
             prompt,
+            language=request.language,
+        )
+
+        return GeneratedLoveLetter(
+            headline=headline,
+            message=message,
+            model=settings.gemini_model,
+            provider="gemini",
+        )
+
+    except LoveLetterOutputError:
+        # A malformed/truncated/language-mismatched response is not
+        # treated as a provider outage. Ask Gemini again with a stricter
+        # output instruction before considering the generation failed.
+        retry_prompt = _retry_prompt(
+            prompt,
+            language=request.language,
+        )
+
+        headline, message = _generate_with_gemini(
+            retry_prompt,
+            language=request.language,
         )
 
         return GeneratedLoveLetter(
@@ -456,6 +661,7 @@ def generate_love_letter(
         # failures such as network errors, rate limits, or 5xx errors.
         headline, message = _generate_with_ollama(
             prompt,
+            language=request.language,
         )
 
         return GeneratedLoveLetter(
